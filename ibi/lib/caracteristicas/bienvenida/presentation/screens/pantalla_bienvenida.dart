@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:ibi/core/constants/app_colors.dart';
+import 'package:ibi/core/constants/app_constants.dart';
+import '../widgets/logo_card_widget.dart';
 
+/// Pantalla de Bienvenida / Onboarding (WF1)
 class PantallaBienvenida extends StatefulWidget {
   final VoidCallback onAceptar;
 
@@ -29,49 +33,27 @@ class _PantallaBienvenidaState extends State<PantallaBienvenida> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            bool esPantallaAncha = constraints.maxWidth > 600;
+            final esPantallaAncha =
+                constraints.maxWidth > AppConstants.tabletBreakpoint;
 
             return Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 32.0,
+                ),
                 child: Container(
                   constraints: BoxConstraints(
-                    maxWidth: esPantallaAncha ? 500 : double.infinity,
+                    maxWidth: esPantallaAncha
+                        ? AppConstants.maxContentWidthMobile
+                        : double.infinity,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // RECUADRO DEL LOGO
-                      Container(
-                        padding: const EdgeInsets.all(24.0),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(24.0),
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
-                            width: 2,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.accessibility_new_rounded,
-                              size: 64,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Logotipo de IBI',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      const LogoCardWidget(),
 
                       const SizedBox(height: 32),
 
@@ -98,10 +80,15 @@ class _PantallaBienvenidaState extends State<PantallaBienvenida> {
                         decoration: InputDecoration(
                           hintText: 'Escriba su nombre o apodo aquí...',
                           hintStyle: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.5),
                           ),
                           filled: true,
-                          fillColor: esOscuro ? const Color(0xFF1E293B) : Colors.white,
+                          fillColor: esOscuro
+                              ? AppColors.surfaceDark
+                              : AppColors.surfaceLight,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 20.0,
                             vertical: 16.0,
@@ -112,7 +99,10 @@ class _PantallaBienvenidaState extends State<PantallaBienvenida> {
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16.0),
                             borderSide: BorderSide(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.2),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
@@ -130,18 +120,10 @@ class _PantallaBienvenidaState extends State<PantallaBienvenida> {
                       // BOTÓN ACEPTAR
                       ElevatedButton(
                         onPressed: () {
-                          debugPrint('Nombre ingresado: ${_nombreController.text}');
+                          debugPrint(
+                              'Nombre ingresado: ${_nombreController.text}');
                           widget.onAceptar();
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16.0),
-                          ),
-                          elevation: 2,
-                        ),
                         child: const Text(
                           'Aceptar',
                           style: TextStyle(

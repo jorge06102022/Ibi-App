@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'pantallas/bienvenida.dart';
-import 'pantallas/inicio.dart';
+import 'caracteristicas/bienvenida/presentation/screens/pantalla_bienvenida.dart';
+import 'caracteristicas/inicio/presentation/screens/pantalla_inicio.dart';
+import 'core/constants/app_constants.dart';
+import 'core/theme/app_theme.dart';
 
 void main() {
   runApp(const IbiApp());
@@ -39,39 +41,11 @@ class _IbiAppState extends State<IbiApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ibi',
+      title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
-
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        colorScheme: ColorScheme.fromSeed(
-          brightness: Brightness.light,
-          seedColor: const Color(0xFF0284C7),
-          primary: const Color(0xFF0284C7),
-          onPrimary: Colors.white,
-          surface: const Color(0xFFF8FAFC),
-          onSurface: const Color(0xFF0F172A),
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-      ),
-
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          brightness: Brightness.dark,
-          seedColor: const Color(0xFF38BDF8),
-          primary: const Color(0xFF38BDF8),
-          onPrimary: const Color(0xFF0F172A),
-          surface: const Color(0xFF1E293B),
-          onSurface: const Color(0xFFF8FAFC),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-      ),
-
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       themeMode: _esModoOscuro ? ThemeMode.dark : ThemeMode.light,
-
       home: _pantallaActual == 0
           ? PantallaBienvenida(
               onAceptar: _irAInicio,
