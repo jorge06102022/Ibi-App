@@ -1,0 +1,9 @@
+services:
+  ibi-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ibi_app_container
+    ports:
+      - "8080:80"
+    restart: always
