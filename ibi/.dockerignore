@@ -1,9 +1,14 @@
 .dart_tool/
 .git/
 .github/
+.gitignore
+.idea/
 build/
 ios/
 android/
 windows/
 linux/
 macos/
+*.iml
+.metadata
+test/
