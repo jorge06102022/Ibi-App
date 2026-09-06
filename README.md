@@ -10,3 +10,6 @@ Hernan Moreno, David Casiani, Osvaldo Horta Meza
 
 - [versión 1](https://docs.google.com/document/d/17bHSL-J2Cif4SfClLSzUa1lV9s_nOYlz/edit?usp=sharing&ouid=110356131462273622705&rtpof=true&sd=true)
 
+# Repo DockerHub
+
+- docker pull hmorenov/ibi-app
