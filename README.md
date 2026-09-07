@@ -13,3 +13,4 @@ Hernan Moreno, David Casiani, Osvaldo Horta Meza
 # Repo DockerHub
 
 - docker pull hmorenov/ibi-app
+- docker run -p 8080:80 hmorenov/ibi-app
