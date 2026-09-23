@@ -25,8 +25,8 @@ jobs:
       - name: Compilar y publicar imagen Docker
         uses: docker/build-push-action@v5
         with:
-          context: ./ibi
-          file: ./ibi/Dockerfile
+          context: .
+          file: ./Dockerfile
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/ibi-app:latest

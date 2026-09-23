@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+*.sqlite3
+.git/
+.gitignore
+staticfiles/
+*.log
+.DS_Store
+flutter_app/
+connectvoice_app/

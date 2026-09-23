@@ -1,0 +1,382 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{% if room %}{{ room.display_name }} — {% endif %}ConnectVoice{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'chat/css/main.css' %}">{% endblock %}
+
+{% block body %}
+
+<!-- ── Modal: Nueva sala ─────────────────────────────────── -->
+<div class="overlay" id="newRoomModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2><i class="fas fa-plus-circle"></i> Nueva sala de chat</h2>
+      <button class="btn-icon" onclick="closeModal('newRoomModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label"><i class="fas fa-tag"></i> Nombre de la sala</label>
+        <input type="text" id="newRoomName" class="form-input" placeholder="Ej: Familia, Trabajo, Amigos..." maxlength="80">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-modal btn-modal-ghost" onclick="closeModal('newRoomModal')">Cancelar</button>
+      <button class="btn-modal btn-modal-primary" onclick="createRoom()">
+        <i class="fas fa-plus"></i> Crear sala
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Configuración ─────────────────────────────── -->
+<div class="overlay" id="settingsModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <h2><i class="fas fa-sliders-h"></i> Configuración</h2>
+      <button class="btn-icon" onclick="closeModal('settingsModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-group">
+        <label class="form-label"><i class="fas fa-user"></i> ¿Cómo quieres aparecer en el chat?</label>
+        <input type="text" id="cfg_name" class="form-input" placeholder="Tu nombre o apodo" maxlength="60">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label"><i class="fas fa-palette"></i> Color de avatar</label>
+        <div class="color-row" id="colorRow">
+          {% for color in colors %}
+          <button class="clr-swatch" style="background:{{ color }}" data-color="{{ color }}" onclick="selectColor('{{ color }}',this)"></button>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="cfg_color" value="{{ sender_color }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label"><i class="fas fa-volume-up"></i> Voz para texto-a-voz</label>
+        <select id="cfg_voice_gender" class="form-input">
+          <option value="female">🎙 Femenina</option>
+          <option value="male">🎙 Masculina</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Velocidad de voz</label>
+        <div class="range-wrap">
+          <input type="range" id="cfg_speed" min="0.5" max="2" step="0.1" value="1.0">
+          <span class="range-val" id="speedVal">1.0x</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Volumen</label>
+        <div class="range-wrap">
+          <input type="range" id="cfg_vol" min="0" max="1" step="0.1" value="1.0">
+          <span class="range-val" id="volVal">1.0</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="test-voice-btn" onclick="testVoice()"><i class="fas fa-play"></i> Probar voz</button>
+        <span style="font-size:12px;color:var(--tx3)">Escucharás cómo sonará tu voz</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label"><i class="fas fa-hands"></i> Modo señas (emoji)</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="cfg_sign_mode" style="width:18px;height:18px">
+          <span style="font-size:13px;color:var(--tx2)">
+            Mostrar los mensajes como deletreo visual con emoji en vez de letras.
+            No reemplaza a un intérprete certificado de Lengua de Señas.
+          </span>
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label"><i class="fas fa-moon"></i> Tema</label>
+        <div style="display:flex;gap:8px">
+          <button class="btn-modal btn-modal-ghost" id="themeDark" onclick="setTheme('dark')"><i class="fas fa-moon"></i> Oscuro</button>
+          <button class="btn-modal btn-modal-ghost" id="themeLight" onclick="setTheme('light')"><i class="fas fa-sun"></i> Claro</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-modal btn-modal-ghost" onclick="closeModal('settingsModal')">Cancelar</button>
+      <button class="btn-modal btn-modal-primary" onclick="saveSettings()">
+        <i class="fas fa-save"></i> Guardar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Borrar chat ─────────────────────────────────── -->
+<div class="overlay" id="clearModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2><i class="fas fa-trash"></i> Limpiar mensajes</h2>
+      <button class="btn-icon" onclick="closeModal('clearModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--tx2);text-align:center;line-height:1.7">
+        ¿Borrar todos los mensajes de <strong id="clearRoomName"></strong>?<br>
+        <span style="color:var(--tx3);font-size:13px">Esta acción no se puede deshacer.</span>
+      </p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-modal btn-modal-ghost" onclick="closeModal('clearModal')">Cancelar</button>
+      <button class="btn-modal btn-modal-danger" onclick="confirmClear()">
+        <i class="fas fa-trash"></i> Borrar todo
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Borrar sala ─────────────────────────────────── -->
+<div class="overlay" id="delRoomModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2><i class="fas fa-door-closed"></i> Eliminar sala</h2>
+      <button class="btn-icon" onclick="closeModal('delRoomModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--tx2);text-align:center;line-height:1.7">
+        ¿Eliminar la sala <strong id="delRoomName"></strong> y todos sus mensajes?<br>
+        <span style="color:var(--tx3);font-size:13px">Esta acción no se puede deshacer.</span>
+      </p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-modal btn-modal-ghost" onclick="closeModal('delRoomModal')">Cancelar</button>
+      <button class="btn-modal btn-modal-danger" onclick="confirmDelRoom()">
+        <i class="fas fa-trash"></i> Eliminar sala
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toasts ──────────────────────────────────────────────── -->
+<div class="toasts" id="toasts"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     APP LAYOUT
+     ══════════════════════════════════════════════════════════ -->
+<div class="app">
+
+  <!-- Backdrop for mobile sidebar -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+
+  <!-- ── Sidebar ──────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <div class="logo-icon"><i class="fas fa-hands-asl-interpreting"></i></div>
+      <div class="logo-text">
+        <span class="logo-name">ConnectVoice</span>
+        <span class="logo-sub">Chat Inclusivo</span>
+      </div>
+      <button class="btn-icon back-btn" id="sidebarClose"><i class="fas fa-times"></i></button>
+    </div>
+
+    <button class="btn-new-room" onclick="openModal('newRoomModal'); closeSidebar();">
+      <i class="fas fa-plus-circle"></i> Nueva sala de chat
+    </button>
+
+    <div class="rooms-label">Salas guardadas</div>
+
+    <div class="rooms-list" id="roomsList">
+      {% for r in rooms %}
+      <a href="/sala/{{ r.name }}/"
+         class="room-item {% if room and room.name == r.name %}active{% endif %}"
+         data-slug="{{ r.name }}"
+         data-name="{{ r.display_name }}">
+        <div class="room-icon"><i class="fas fa-comments"></i></div>
+        <div class="room-info">
+          <div class="room-name">{{ r.display_name }}</div>
+          <div class="room-meta">{{ r.message_count }} mens. · {{ r.last_activity|date:"d/m H:i" }}</div>
+        </div>
+        <button class="room-del" onclick="askDelRoom(event, '{{ r.name }}', '{{ r.display_name|escapejs }}')" title="Eliminar sala">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+      </a>
+      {% empty %}
+      <div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">
+        <i class="fas fa-comments" style="font-size:24px;display:block;margin-bottom:8px"></i>
+        Aún no hay salas.<br>Crea una para empezar.
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="sidebar-foot-btn" onclick="openModal('settingsModal'); closeSidebar();">
+        <i class="fas fa-cog"></i> Ajustes
+      </button>
+      {% if room %}
+      <a href="/descargar/{{ room.name }}/" class="sidebar-foot-btn" style="text-decoration:none">
+        <i class="fas fa-download"></i> PDF
+      </a>
+      {% endif %}
+    </div>
+  </aside>
+
+  <!-- ── Main area ─────────────────────────────────────────── -->
+  <div class="main">
+
+    {% if room %}
+    <!-- ── Chat header ───────────────────────────────────── -->
+    <header class="chat-header">
+      <button class="hamburger" id="hamburger"><i class="fas fa-bars"></i></button>
+
+      <div class="chat-header-icon">
+        <i class="fas fa-comments"></i>
+        <span class="online-dot"></span>
+      </div>
+
+      <div class="chat-header-info">
+        <div class="chat-header-title">{{ room.display_name }}</div>
+        <div class="chat-header-sub">
+          <div class="typing-row" id="typingRow">
+            <span class="dots"><span></span><span></span><span></span></span>
+            <span id="typingWho"></span> está escribiendo…
+          </div>
+          <div class="conn-status conn-connecting" id="connStatus">
+            <i class="fas fa-circle"></i> Conectando…
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-header-actions">
+        <button class="hdr-btn" onclick="openModal('clearModal'); document.getElementById('clearRoomName').textContent='{{ room.display_name|escapejs }}'" title="Limpiar mensajes">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+        <button class="hdr-btn" onclick="openModal('settingsModal')" title="Configuración">
+          <i class="fas fa-sliders-h"></i>
+        </button>
+        <button class="hdr-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Cambiar tema">
+          <i class="fas fa-moon" id="themeIcon"></i>
+        </button>
+        <button class="hdr-btn hamburger" id="hamburger2"><i class="fas fa-bars"></i></button>
+      </div>
+    </header>
+
+    <!-- ── Chat wrap (messages + overlay) ───────────────── -->
+    <div class="chat-wrap">
+
+      <!-- Voice overlay -->
+      <div class="voice-overlay" id="voiceOverlay" onclick="stopListening()">
+        <div class="waveform"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="voice-label">Escuchando…</div>
+        <p id="voicePreview"></p>
+        <button class="btn-stop-voice" onclick="stopListening()">
+          <i class="fas fa-stop-circle"></i> Detener
+        </button>
+      </div>
+
+      <!-- Messages -->
+      <div class="messages-area" id="msgArea">
+        <div class="messages-wrap" id="msgWrap">
+
+          <div class="sys-msg">
+            <span><i class="fas fa-hands-asl-interpreting"></i> Sala "{{ room.display_name }}" — Comunicación inclusiva</span>
+          </div>
+
+          {% for msg in messages %}
+          <div class="msg-wrap {% if msg.sender_name == sender_name %}own{% endif %}" id="m{{ msg.id }}">
+            {% if msg.sender_name != sender_name %}
+            <div class="msg-avatar" style="background:{{ msg.sender_color }}">{{ msg.sender_name|first|upper }}</div>
+            {% endif %}
+            <div class="msg-body">
+              {% if msg.sender_name != sender_name %}
+              <div class="msg-sender">{{ msg.sender_name }}</div>
+              {% endif %}
+              <div class="msg-bubble {% if msg.message_type == 'voice' %}voice-bubble{% endif %}">
+                {% if msg.message_type == 'voice' %}
+                <div class="voice-tag"><i class="fas fa-microphone"></i> Voz transcrita</div>
+                {% endif %}
+                <div class="msg-text" data-original="{{ msg.content }}">{{ msg.content }}</div>
+                <div class="msg-meta">
+                  <span class="msg-time">{{ msg.timestamp|time:"H:i" }}</span>
+                  <button class="btn-replay" onclick="speak('{{ msg.content|escapejs }}')" title="Leer en voz alta">
+                    <i class="fas fa-volume-up"></i>
+                  </button>
+                  <button class="btn-replay" title="Alternar texto/señas" onclick="toggleSingleMsg(this)">
+                    <i class="fas fa-hands"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+
+        </div>
+      </div>
+    </div><!-- .chat-wrap -->
+
+    <!-- ── Input area ────────────────────────────────────── -->
+    <div class="input-area">
+      <div class="input-row">
+        <button class="btn-mic" id="micBtn" onclick="toggleMic()" title="Micrófono (Ctrl+M)">
+          <i class="fas fa-microphone" id="micIcon"></i>
+          <div class="mic-ring"></div>
+        </button>
+        <textarea class="msg-textarea" id="msgInput"
+          placeholder="Escribe un mensaje… (Enter para enviar, Shift+Enter = nueva línea)"
+          rows="1" maxlength="2000"></textarea>
+        <button class="btn-send" onclick="sendText()" title="Enviar">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+      <div class="input-row-bar"> <!-- Cambiado de input-bar para consistencia -->
+        <div class="mic-status" id="micStatus">
+          <i class="fas fa-microphone-slash"></i> Micrófono desactivado
+        </div>
+        <div class="char-cnt" id="charCnt">0 / 2000</div>
+      </div>
+    </div>
+
+    {% else %}
+    <!-- ── Empty state (no room selected) ───────────────── -->
+    <header class="chat-header">
+      <button class="hamburger" id="hamburger"><i class="fas fa-bars"></i></button>
+      <div class="chat-header-icon"><i class="fas fa-comments"></i></div>
+      <div class="chat-header-info">
+        <div class="chat-header-title">ConnectVoice</div>
+        <div class="chat-header-sub">Chat Inclusivo</div>
+      </div>
+      <div class="chat-header-actions">
+        <button class="hdr-btn" onclick="openModal('settingsModal')" title="Configuración"><i class="fas fa-sliders-h"></i></button>
+        <button class="hdr-btn" onclick="toggleTheme()" title="Tema"><i class="fas fa-moon" id="themeIcon"></i></button>
+      </div>
+    </header>
+
+    <div class="empty-state">
+      <div class="empty-icon"><i class="fas fa-hands-asl-interpreting"></i></div>
+      <div class="empty-title">Bienvenido a ConnectVoice</div>
+      <div class="empty-sub">
+        Selecciona una sala de la lista o crea una nueva para empezar a comunicarte con voz y texto en tiempo real.
+      </div>
+      <button class="btn-primary" onclick="openModal('newRoomModal')">
+        <i class="fas fa-plus-circle"></i> Crear nueva sala
+      </button>
+      {% if rooms %}
+      <div style="margin-top:8px;color:var(--tx3);font-size:13px">o selecciona una sala existente en el panel izquierdo</div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div><!-- .main -->
+</div><!-- .app -->
+
+<!-- JS data -->
+<script>
+  const ROOM_SLUG    = '{{ room.name|default:"" }}';
+  const ROOM_NAME    = '{{ room.display_name|default:""|escapejs }}';
+  const SESSION_ID   = '{{ session_id }}';
+  const SENDER_NAME  = '{{ sender_name|escapejs }}';
+  const SENDER_COLOR = '{{ sender_color }}';
+  const CSRF         = '{{ csrf_token }}';
+  const CURRENT_THEME = localStorage.getItem('cv_theme') || 'dark';
+</script>
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'chat/js/app.js' %}"></script>
+{% endblock %}

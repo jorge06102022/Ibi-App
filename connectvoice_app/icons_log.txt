@@ -1,0 +1,9 @@
+git : El t‚rmino 'git' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\src\flutter\flutter\bin\internal\update_engine_version.ps1: 55 Car cter: 11
++ } elseif (git -C "$flutterRoot" ls-files bin/internal/engine.version) ...
++           ~~~
+    + CategoryInfo          : ObjectNotFound: (git:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
