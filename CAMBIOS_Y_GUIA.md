@@ -84,10 +84,7 @@ Variables de entorno configurables (ver `docker-compose.yml` o copia
 - `ALLOWED_HOSTS`
 - `REDIS_URL`
 
-### Opción C — Generar el APK con Flutter
 
-Ve a `flutter_app/README_FLUTTER.md` — ahí están los pasos completos,
-incluyendo cómo apuntar la app al servidor (local, Docker, o en internet).
 
 ---
 
