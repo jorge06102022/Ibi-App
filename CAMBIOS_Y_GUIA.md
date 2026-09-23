@@ -1,4 +1,4 @@
-# ConnectVoice — Cambios aplicados y guía paso a paso
+# ibi-app — Cambios aplicados y guía paso a paso
 
 ## ✅ Qué se agregó / cambió
 
