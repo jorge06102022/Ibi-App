@@ -1,4 +1,4 @@
-# ConnectVoice App (Flutter nativo, con micrófono funcional) → APK
+# ibi App (Flutter nativo, con micrófono funcional) → APK
 
 Esta es la versión **nativa** de la app: ya NO es un WebView. Se conecta
 directo a tu backend Django por WebSocket, y usa:
