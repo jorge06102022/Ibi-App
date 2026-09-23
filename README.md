@@ -1,9 +1,9 @@
-# 🤝 ConnectVoice — Chat Inclusivo (v2)
+# 🤝 ibi-app — Chat Inclusivo (v2)
 
 Sistema de chat en tiempo real para comunicación entre personas **sordomudas y oyentes**.
 Sin login. Sin registro. Solo abre y chatea.
 
----
+
 
 ## ✨ Características
 
@@ -18,65 +18,7 @@ Sin login. Sin registro. Solo abre y chatea.
 
 ---
 
-## 🚀 Instalación en 3 pasos
 
-### 1. Entorno virtual e instalar dependencias
-
-```bash
-# Crear entorno virtual
-python -m venv venv
-
-# Activar (Windows)
-venv\Scripts\activate
-
-# Activar (Linux / Mac)
-source venv/bin/activate
-
-# Instalar
-pip install -r requirements.txt
-```
-
-### 2. Preparar la base de datos
-
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
-
-### 3. Iniciar el servidor
-
-```bash
-python manage.py runserver
-```
-
-Abre **http://localhost:8000** en Chrome o Edge.
-
----
-
-## 🗄️ MySQL (opcional, para producción)
-
-```sql
-CREATE DATABASE connectvoice_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'cvuser'@'localhost' IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON connectvoice_db.* TO 'cvuser'@'localhost';
-```
-
-Descomenta el bloque MySQL en `connectvoice/settings.py` y comenta el SQLite.
-
----
-
-## ⚡ Redis + Daphne (producción multi-proceso)
-
-```bash
-pip install channels-redis redis daphne
-
-# Iniciar con Daphne (ASGI)
-daphne -b 0.0.0.0 -p 8000 connectvoice.asgi:application
-```
-
-Descomenta el bloque Redis en `settings.py`.
-
----
 
 ## 📁 Estructura
 
@@ -114,25 +56,5 @@ connectvoice/
 4. Los mensajes de otros usuarios se leen automáticamente en voz alta
 5. Atajo de teclado: **Ctrl+M** para activar/desactivar micrófono
 
----
 
-## ⚙️ Configuración (en la app)
 
-Haz clic en el ícono ⚙️ para:
-- Cambiar tu nombre visible en el chat
-- Elegir color de avatar
-- Seleccionar voz masculina o femenina
-- Ajustar velocidad y volumen
-- Cambiar tema claro/oscuro
-
----
-
-## 🔧 Solución de problemas
-
-**"Voz no disponible"** → Usa Chrome o Edge (no Firefox)
-
-**WebSocket no conecta** → Verifica que el servidor esté corriendo en `localhost:8000`
-
-**PDF no se genera** → Instala `pip install reportlab` (descargará como .txt si no está disponible)
-
-**Migraciones** → `python manage.py makemigrations chat && python manage.py migrate`
