@@ -1,5 +1,5 @@
-name: connectvoice_app
-description: "ConnectVoice — app nativa Android (chat + voz)"
+name: ibi_app
+description: "ibi — app nativa Android (chat + voz)"
 publish_to: 'none'
 version: 1.0.0+1
 
