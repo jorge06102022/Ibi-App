@@ -12,6 +12,7 @@ import 'sign_emoji.dart';
 import 'sign_keyboard.dart';
 import 'theme.dart';
 import 'hand_avatar_3d.dart';
+import 'quick_words.dart';
 
 class ChatScreen extends StatefulWidget {
   final Prefs prefs;
@@ -56,8 +57,11 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _signKeyboardOpen = false;
   final _textFocusNode = FocusNode();
 
-  // ── Avatar de deletreo visual (letra por letra) ────────────
-  final GlobalKey<HandAvatar3DState> _handAvatarKey = GlobalKey<HandAvatar3DState>();
+  // ── Palabras Rápidas ──────────────────────────────────────
+  bool _quickWordsOpen = false;
+
+  // ── Avatar de señas 3D ────────────
+  final GlobalKey<SignAvatar3DState> _handAvatarKey = GlobalKey<SignAvatar3DState>();
   List<String> _avatarSigns = [];
   int _avatarIndex = 0;
   Timer? _avatarTimer;
@@ -169,16 +173,13 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // ── Avatar de deletreo visual ──────────────────────────────
-  // Deletrea con emoji-señas lo que la otra persona dijo/escribió,
-  // letra por letra. NO es una traducción oficial a LSC (no existe
-  // seña por palabra completa aquí, solo el alfabeto visual de apoyo).
+  // ── Avatar de señas visuales ──────────────────────────────
   void _playAvatarSigns(String text) {
     final clean = text.trim();
     if (clean.isEmpty) return;
 
-    // Pedir a la mano 3D que deletree el texto
-    _handAvatarKey.currentState?.spell(clean);
+    // Pedir al avatar 3D que haga la seña de la oración
+    _handAvatarKey.currentState?.signSentence(clean);
 
     final raw = textToSignEmojis(clean);
     final parts = raw.split(' ').where((s) => s.trim().isNotEmpty).toList();
@@ -566,9 +567,11 @@ class _ChatScreenState extends State<ChatScreen> {
             colors: [AppColors.bg0, AppColors.bg1],
           ),
         ),
-        child: Column(
+        child: Stack(
           children: [
-            _AvatarPanel(
+            Column(
+              children: [
+                _AvatarPanel(
               active: _avatarActive,
               emoji: _avatarEmoji,
               word: _avatarWord,
@@ -636,6 +639,15 @@ class _ChatScreenState extends State<ChatScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     _CircleIconButton(
+                      icon: Icons.bolt_rounded,
+                      active: _quickWordsOpen,
+                      onTap: () {
+                        setState(() => _quickWordsOpen = !_quickWordsOpen);
+                        if (_quickWordsOpen) _textFocusNode.unfocus();
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _CircleIconButton(
                       icon: Icons.back_hand_rounded,
                       active: _signKeyboardOpen,
                       onTap: _toggleSignKeyboard,
@@ -648,12 +660,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.bg2,
-                          borderRadius: BorderRadius.circular(26),
-                          border: Border.all(color: AppColors.border),
-                        ),
+                      child: GlassContainer(
+                        radius: 26,
+                        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                        opacity: 0.05,
+                        borderColor: AppColors.border,
                         child: TextField(
                           controller: _textController,
                           focusNode: _textFocusNode,
@@ -690,8 +701,18 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
           ],
         ),
-      ),
-    );
+        if (_quickWordsOpen)
+          QuickWordsMenu(
+            onWordSelected: (word) {
+              _textController.text = word;
+              _sendText();
+            },
+            onClose: () => setState(() => _quickWordsOpen = false),
+          ),
+      ],
+    ),
+  ),
+);
   }
 }
 
@@ -699,7 +720,7 @@ class _AvatarPanel extends StatelessWidget {
   final bool active;
   final String emoji;
   final String word;
-  final GlobalKey<HandAvatar3DState> handKey;
+  final GlobalKey<SignAvatar3DState> handKey;
 
   const _AvatarPanel({
     super.key,
@@ -711,23 +732,23 @@ class _AvatarPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.bg1,
-        borderRadius: BorderRadius.circular(AppRadius.r3),
-        border: Border.all(
-          color: active ? AppColors.accent.withOpacity(0.4) : AppColors.border,
-        ),
-        boxShadow: active
-            ? [BoxShadow(color: AppColors.accent.withOpacity(0.15), blurRadius: 16)]
-            : null,
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+      child: GlassContainer(
+        radius: AppRadius.r3,
+        padding: const EdgeInsets.all(16),
+        opacity: active ? 0.08 : 0.03,
+        borderColor: active ? AppColors.accent.withOpacity(0.5) : AppColors.border,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutQuart,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            boxShadow: active
+                ? [BoxShadow(color: AppColors.accent.withOpacity(0.15), blurRadius: 40, spreadRadius: -10)]
+                : null,
+          ),
+          child: Column(
         children: [
           // ── Área grande para la mano 3D ──
           Container(
@@ -737,12 +758,12 @@ class _AvatarPanel extends StatelessWidget {
               color: AppColors.bg2,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: HandAvatar3D(key: handKey),
+            child: SignAvatar3D(key: handKey),
           ),
           const SizedBox(height: 8),
           // ── Texto de estado ──
           Text(
-            active ? 'Deletreando: $word' : 'Avatar de señas',
+            active ? 'Señando: $word' : 'Avatar de señas LSC',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -751,13 +772,18 @@ class _AvatarPanel extends StatelessWidget {
               fontSize: 12.5,
             ),
           ),
-          if (!active)
-            const Text(
-              'Deletreo visual — no es LSC oficial',
-              style: TextStyle(color: AppColors.tx3, fontSize: 11),
-            ),
-        ],
+            if (!active)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  'Holographic Avatar System - LSC',
+                  style: TextStyle(color: AppColors.tx3, fontSize: 10, letterSpacing: 1.5),
+                ),
+              ),
+          ],
+        ),
       ),
+    ),
     );
   }
 }
@@ -878,64 +904,75 @@ class _MessageBubbleState extends State<_MessageBubble> {
     final senderColor = Color(int.parse(widget.msg.senderColor.replaceFirst('#', '0xFF')));
     final isOwn = widget.msg.isOwn;
 
-    final bubble = Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
-      decoration: BoxDecoration(
-        gradient: isOwn ? AppColors.brandGradient : null,
-        color: isOwn ? null : AppColors.bg2,
-        border: isOwn ? null : Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(AppRadius.r3),
-          topRight: const Radius.circular(AppRadius.r3),
-          bottomLeft: Radius.circular(isOwn ? AppRadius.r3 : 4),
-          bottomRight: Radius.circular(isOwn ? 4 : AppRadius.r3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isOwn)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 3),
-              child: Text(widget.msg.senderName,
-                  style: TextStyle(color: senderColor, fontWeight: FontWeight.w700, fontSize: 12)),
-            ),
-          if (widget.msg.messageType == 'voice')
-            Padding(
-              padding: const EdgeInsets.only(bottom: 3),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.mic_rounded, size: 12, color: isOwn ? Colors.white70 : AppColors.tx3),
-                  const SizedBox(width: 4),
-                  Text('Voz transcrita',
-                      style: TextStyle(fontSize: 10.5, color: isOwn ? Colors.white70 : AppColors.tx3)),
-                ],
-              ),
-            ),
-          Text(displayText, style: TextStyle(color: isOwn ? Colors.white : AppColors.tx1, fontSize: 14.5, height: 1.3)),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(widget.msg.timestamp,
-                  style: TextStyle(fontSize: 10, color: isOwn ? Colors.white70 : AppColors.tx3)),
-              const SizedBox(width: 2),
-              InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => setState(() => _localOverride = !showSigns),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(Icons.back_hand_rounded, size: 13,
-                      color: isOwn ? Colors.white70 : AppColors.tx3),
-                ),
-              ),
-            ],
+    final bubbleContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!isOwn)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(widget.msg.senderName,
+                style: TextStyle(color: senderColor, fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5)),
           ),
-        ],
-      ),
+        if (widget.msg.messageType == 'voice')
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.mic_rounded, size: 14, color: isOwn ? Colors.white70 : AppColors.tx2),
+                const SizedBox(width: 4),
+                Text('VOZ TRANSCRITA',
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1, color: isOwn ? Colors.white70 : AppColors.tx2)),
+              ],
+            ),
+          ),
+        Text(displayText, style: TextStyle(color: isOwn ? Colors.white : AppColors.tx1, fontSize: 15, height: 1.4, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.msg.timestamp,
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isOwn ? Colors.white70 : AppColors.tx3)),
+            const SizedBox(width: 6),
+            InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => setState(() => _localOverride = !showSigns),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(Icons.back_hand_rounded, size: 14,
+                    color: isOwn ? Colors.white70 : AppColors.tx3),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
+
+    final bubble = isOwn 
+      ? Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
+          decoration: BoxDecoration(
+            gradient: AppColors.holographicGradient,
+            boxShadow: [BoxShadow(color: AppColors.accent4.withOpacity(0.25), blurRadius: 20, offset: const Offset(0, 4))],
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(AppRadius.r3),
+              topRight: Radius.circular(AppRadius.r3),
+              bottomLeft: Radius.circular(AppRadius.r3),
+              bottomRight: Radius.circular(4),
+            ),
+          ),
+          child: bubbleContent,
+        )
+      : GlassContainer(
+          radius: AppRadius.r3,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+          opacity: 0.05,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
+            child: bubbleContent,
+          ),
+        );
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

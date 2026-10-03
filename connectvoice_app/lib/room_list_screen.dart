@@ -43,42 +43,6 @@ class _RoomListScreenState extends State<RoomListScreen> {
     }
   }
 
-  Future<void> _createRoom() async {
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Nueva sala', style: TextStyle(color: AppColors.tx1)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: const TextStyle(color: AppColors.tx1),
-          decoration: const InputDecoration(hintText: 'Ej: Familia, Trabajo...'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.tx2)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Crear', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
-    if (name == null || name.isEmpty) return;
-    try {
-      final room = await _api.createRoom(name);
-      await _refresh();
-      if (mounted) _openRoom(room);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    }
-  }
-
   Future<void> _deleteRoom(Room room) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -127,14 +91,16 @@ class _RoomListScreenState extends State<RoomListScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg0,
       appBar: AppBar(
-        title: const Text('Salas'),
+        title: const Text('BIBLIOTECA', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 16)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.tx1, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _refresh),
-          IconButton(icon: const Icon(Icons.dns_rounded), tooltip: 'Cambiar servidor', onPressed: widget.onChangeServer),
-          const SizedBox(width: 4),
+          IconButton(icon: const Icon(Icons.refresh_rounded, color: AppColors.tx1), onPressed: _refresh),
+          const SizedBox(width: 8),
         ],
       ),
-      floatingActionButton: _NewRoomFab(onTap: _createRoom),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
           : _error != null
@@ -196,74 +162,42 @@ class _RoomCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.bg1,
-      borderRadius: BorderRadius.circular(AppRadius.r3),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.r3),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.r3),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.r2),
-                ),
-                child: const Icon(Icons.chat_bubble_rounded, color: AppColors.accent, size: 20),
+    return GestureDetector(
+      onTap: onTap,
+      child: GlassContainer(
+        radius: AppRadius.r3,
+        padding: const EdgeInsets.all(16),
+        opacity: 0.05,
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: AppColors.accent.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppRadius.r2),
+                border: Border.all(color: AppColors.accent.withOpacity(0.3)),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(room.displayName,
-                        style: const TextStyle(color: AppColors.tx1, fontWeight: FontWeight.w600, fontSize: 15)),
-                    const SizedBox(height: 3),
-                    Text('${room.messageCount} mensajes · ${room.lastActivity}',
-                        style: const TextStyle(color: AppColors.tx2, fontSize: 12)),
-                  ],
-                ),
+              child: const Icon(Icons.chat_bubble_rounded, color: AppColors.accent, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(room.displayName.toUpperCase(),
+                      style: const TextStyle(color: AppColors.tx1, fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 1)),
+                  const SizedBox(height: 4),
+                  Text('${room.messageCount} MENSAJES · ${room.lastActivity.toUpperCase()}',
+                      style: const TextStyle(color: AppColors.tx2, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1)),
+                ],
               ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.tx3, size: 20),
-                onPressed: onDelete,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NewRoomFab extends StatelessWidget {
-  final VoidCallback onTap;
-  const _NewRoomFab({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(30),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(30),
-        onTap: onTap,
-        child: Ink(
-          decoration: const BoxDecoration(
-            gradient: AppColors.brandGradient,
-            shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: Color(0x5500D4FF), blurRadius: 20, spreadRadius: 1)],
-          ),
-          padding: const EdgeInsets.all(16),
-          child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.danger, size: 22),
+              onPressed: onDelete,
+            ),
+          ],
         ),
       ),
     );

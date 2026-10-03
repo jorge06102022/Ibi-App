@@ -25,8 +25,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/welcome-hero.jpg
+    - assets/images/
     - assets/html/
+    - assets/lsc/
+    - assets/icon/
 
 flutter_launcher_icons:
   android: true

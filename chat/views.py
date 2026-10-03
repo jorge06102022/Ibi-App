@@ -11,6 +11,7 @@ from django.utils.text import slugify
 from .models import ChatRoom, Message
 
 
+
 # ── Helpers ────────────────────────────────────────────────────
 def get_session_id(request):
     if 'cv_session_id' not in request.session:
@@ -211,3 +212,6 @@ def download_history(request, room_slug):
 def welcome(request):
     """Pantalla de bienvenida CONECTA — primera pantalla que ve el usuario."""
     return render(request, 'chat/welcome.html')
+
+def avatar3d(request):
+    return render(request, 'chat/avatar3d.html')

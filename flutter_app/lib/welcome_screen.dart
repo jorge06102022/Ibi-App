@@ -121,7 +121,11 @@ class _CtaButton extends StatelessWidget {
               ],
             ),
             alignment: Alignment.center,
-            child: Text('⛵', style: TextStyle(fontSize: circleSize * 0.42)),
+            child: Image.asset(
+              'assets/icon/icon.png',
+              width: circleSize * 0.6,
+              height: circleSize * 0.6,
+            ),
           ),
           const SizedBox(height: 8),
           const Text(

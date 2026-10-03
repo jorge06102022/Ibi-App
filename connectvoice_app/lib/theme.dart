@@ -1,33 +1,42 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Paleta calcada de static/chat/css/main.css (tema oscuro de la web),
-/// para que la app nativa se vea consistente con tu marca.
+/// Nuevo Tema: Negro y Azul Neón
 class AppColors {
-  static const bg0 = Color(0xFF0A0A14);
-  static const bg1 = Color(0xFF0F0F1E);
-  static const bg2 = Color(0xFF14142A);
-  static const bg3 = Color(0xFF1A1A38);
-  static const bg4 = Color(0xFF22224A);
-  static const bg5 = Color(0xFF2A2A58);
+  static const bg0 = Color(0xFF03030A); // Deepest void
+  static const bg1 = Color(0xFF080816); // Surface 1
+  static const bg2 = Color(0xFF0D0D22); // Surface 2
+  static const bg3 = Color(0xFF131330); // Elevated
+  static const bg4 = Color(0xFF191940);
+  static const bg5 = Color(0xFF202050);
 
-  static const accent = Color(0xFF00D4FF);
-  static const accent2 = Color(0xFF7C3AED);
-  static const accent3 = Color(0xFF10B981);
-  static const danger = Color(0xFFEF4444);
-  static const warn = Color(0xFFF59E0B);
+  // God-tier Neon Palette
+  static const accent = Color(0xFF00F0FF); // Cyber Blue
+  static const accent2 = Color(0xFF7000FF); // Deep Purple
+  static const accent3 = Color(0xFF00FF88); // Mint Neon
+  static const accent4 = Color(0xFFFF007F); // Neon Pink
+  
+  static const danger = Color(0xFFFF2A55); 
+  static const warn = Color(0xFFFFC000); 
 
-  static const tx1 = Color(0xFFF0F0FF);
-  static const tx2 = Color(0xFF9090BB);
-  static const tx3 = Color(0xFF55557A);
+  static const tx1 = Color(0xFFFFFFFF);
+  static const tx2 = Color(0xFF8B93A5);
+  static const tx3 = Color(0xFF5A6175);
 
-  static const border = Color(0x12FFFFFF);
-  static const border2 = Color(0x1EFFFFFF);
+  static const border = Color(0x2200F0FF); 
+  static const borderLight = Color(0x44FFFFFF);
 
   static const brandGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [accent, accent2],
+  );
+
+  static const holographicGradient = LinearGradient(
+    begin: Alignment.topRight,
+    end: Alignment.bottomLeft,
+    colors: [accent, accent4],
   );
 }
 
@@ -55,7 +64,7 @@ ThemeData buildAppTheme() {
       error: AppColors.danger,
     ),
     appBarTheme: AppBarTheme(
-      backgroundColor: AppColors.bg1,
+      backgroundColor: AppColors.bg0,
       elevation: 0,
       centerTitle: false,
       titleTextStyle: GoogleFonts.spaceGrotesk(
@@ -86,7 +95,7 @@ ThemeData buildAppTheme() {
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: AppColors.bg1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.r3)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.r3), side: const BorderSide(color: AppColors.border)),
     ),
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: AppColors.bg1,
@@ -121,30 +130,90 @@ class GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(AppRadius.r3),
-      child: InkWell(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        gradient: onPressed == null ? null : AppColors.brandGradient,
+        color: onPressed == null ? AppColors.bg3 : null,
         borderRadius: BorderRadius.circular(AppRadius.r3),
-        onTap: onPressed,
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: onPressed == null ? null : AppColors.brandGradient,
-            color: onPressed == null ? AppColors.bg4 : null,
-            borderRadius: BorderRadius.circular(AppRadius.r3),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 18, color: Colors.white),
-                const SizedBox(width: 8),
+        boxShadow: onPressed == null ? null : [
+          BoxShadow(color: AppColors.accent.withOpacity(0.5), blurRadius: 20, offset: const Offset(0, 4)),
+          BoxShadow(color: AppColors.accent2.withOpacity(0.3), blurRadius: 40, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.r3),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.r3),
+          onTap: onPressed,
+          splashColor: Colors.white.withOpacity(0.2),
+          highlightColor: Colors.white.withOpacity(0.1),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 20, color: Colors.white),
+                  const SizedBox(width: 10),
+                ],
+                Text(
+                  label, 
+                  style: const TextStyle(
+                    color: Colors.white, 
+                    fontWeight: FontWeight.w800, 
+                    letterSpacing: 1.2,
+                    fontSize: 15,
+                  )
+                ),
               ],
-              Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Glassmorphism Utility ──
+class GlassContainer extends StatelessWidget {
+  final Widget child;
+  final double radius;
+  final EdgeInsetsGeometry padding;
+  final double blur;
+  final double opacity;
+  final Color? borderColor;
+
+  const GlassContainer({
+    super.key,
+    required this.child,
+    this.radius = AppRadius.r3,
+    this.padding = const EdgeInsets.all(16),
+    this.blur = 20.0,
+    this.opacity = 0.05,
+    this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(opacity),
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(
+              color: borderColor ?? Colors.white.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: child,
         ),
       ),
     );

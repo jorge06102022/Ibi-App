@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>LSC Avatar 3D</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: transparent; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+    </style>
+    <script src="three.min.js"></script>
+    <script src="tween.min.js"></script>
+</head>
+<body>
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        //  DICCIONARIO LSC — 100 SEÑAS
+        //  Basado en descripciones reales de la Lengua de Señas Colombiana.
+        //  Cada seña = array de keyframes con ángulos en grados.
+        //  shoulder:[flexión, abducción, rotación-Z]
+        //  elbow:[flexión, 0, 0]   wrist:[flexión, desviación, rotación]
+        //  Negativo en shoulder-Z = brazo se separa del cuerpo hacia el lado derecho
+        //  Negativo en elbow-X = el antebrazo se dobla hacia arriba
+        // ═══════════════════════════════════════════════════════════════
+        const DICT = {
+// ── SALUDOS Y CORTESÍA ──
+// HOLA: Mano abierta cerca de la sien, se mueve hacia afuera (saludo tipo visera)
+"hola":[
+  {duration:.4, rightArm:{shoulder:[20,0,-70],elbow:[-120,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[20,0,-70],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[20,0,-70],elbow:[-120,0,0],wrist:[0,0,0]}}
+],
+// COMO ESTAS: Ambas manos frente al pecho, dedos en garra, giro/rotación
+"como estas":[
+  {duration:.5, rightArm:{shoulder:[40,0,-30],elbow:[-100,0,0],wrist:[30,0,0]}, leftArm:{shoulder:[40,0,30],elbow:[-100,0,0],wrist:[30,0,0]}},
+  {duration:.5, rightArm:{shoulder:[40,0,-30],elbow:[-100,0,0],wrist:[-30,0,0]}, leftArm:{shoulder:[40,0,30],elbow:[-100,0,0],wrist:[-30,0,0]}},
+  {duration:.4, rightArm:{shoulder:[50,0,-40],elbow:[-60,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[50,0,40],elbow:[-60,0,0],wrist:[0,0,0]}}
+],
+// BIEN: Mano plana toca pecho y se mueve hacia afuera/arriba con pulgar arriba
+"bien":[
+  {duration:.5, rightArm:{shoulder:[30,0,-10],elbow:[-110,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[40,0,-30],elbow:[-60,0,0],wrist:[20,0,0]}}
+],
+// MAL: Mano baja desde el pecho con gesto negativo
+"mal":[
+  {duration:.5, rightArm:{shoulder:[30,0,-10],elbow:[-110,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[10,0,-10],elbow:[-40,0,0],wrist:[-30,0,0]}}
+],
+// GRACIAS: Mano cerca de barbilla/boca, se desplaza hacia adelante con palma abierta
+"gracias":[
+  {duration:.5, rightArm:{shoulder:[40,0,-10],elbow:[-130,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[30,0,-20],elbow:[-80,0,0],wrist:[20,0,0]}}
+],
+// DE NADA: Ambas manos abiertas frente al pecho, se mueven hacia los lados
+"de nada":[
+  {duration:.5, rightArm:{shoulder:[30,0,-20],elbow:[-90,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,20],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[30,0,-50],elbow:[-60,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,50],elbow:[-60,0,0],wrist:[0,0,0]}}
+],
+// POR FAVOR: Mano abierta en el pecho, movimiento circular
+"por favor":[
+  {duration:.4, rightArm:{shoulder:[30,0,-10],elbow:[-110,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[30,0,-10],elbow:[-110,0,0],wrist:[20,0,0]}},
+  {duration:.4, rightArm:{shoulder:[30,0,-10],elbow:[-110,0,0],wrist:[-20,0,0]}}
+],
+// PERDON: Mano sobre el pecho, movimiento circular suave
+"perdon":[
+  {duration:.5, rightArm:{shoulder:[25,0,-5],elbow:[-120,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[25,0,-5],elbow:[-120,0,0],wrist:[20,0,0]}},
+  {duration:.4, rightArm:{shoulder:[25,0,-5],elbow:[-120,0,0],wrist:[-20,0,0]}}
+],
+// SI: Puño cerrado, muñeca se flexiona arriba/abajo (como asentir con la mano)
+"si":[
+  {duration:.3, rightArm:{shoulder:[20,0,-20],elbow:[-100,0,0],wrist:[30,0,0]}},
+  {duration:.3, rightArm:{shoulder:[20,0,-20],elbow:[-100,0,0],wrist:[-20,0,0]}},
+  {duration:.3, rightArm:{shoulder:[20,0,-20],elbow:[-100,0,0],wrist:[30,0,0]}}
+],
+// NO: Índice extendido, movimiento lateral (negar)
+"no":[
+  {duration:.3, rightArm:{shoulder:[20,0,-40],elbow:[-100,0,0],wrist:[0,20,0]}},
+  {duration:.3, rightArm:{shoulder:[20,0,-40],elbow:[-100,0,0],wrist:[0,-20,0]}},
+  {duration:.3, rightArm:{shoulder:[20,0,-40],elbow:[-100,0,0],wrist:[0,20,0]}}
+],
+// ── PRONOMBRES ──
+// YO: Índice apunta al propio pecho
+"yo":[
+  {duration:.6, rightArm:{shoulder:[25,0,-5],elbow:[-120,0,0],wrist:[0,0,0]}}
+],
+// TU: Índice apunta hacia la otra persona
+"tu":[
+  {duration:.6, rightArm:{shoulder:[20,0,-20],elbow:[-40,0,0],wrist:[0,0,0]}}
+],
+// EL: Señalar al lado con índice
+"el":[
+  {duration:.6, rightArm:{shoulder:[10,0,-30],elbow:[-30,0,0],wrist:[0,0,0]}}
+],
+// ELLA: Similar a él pero con leve diferencia
+"ella":[
+  {duration:.4, rightArm:{shoulder:[10,0,-30],elbow:[-30,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[10,10,-30],elbow:[-30,0,0],wrist:[0,10,0]}}
+],
+// NOSOTROS: Índice apunta al pecho y hace arco semicircular
+"nosotros":[
+  {duration:.5, rightArm:{shoulder:[25,0,-5],elbow:[-120,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[25,20,-30],elbow:[-100,0,0],wrist:[0,0,0]}}
+],
+// ELLOS: Señalar al frente y barrer
+"ellos":[
+  {duration:.5, rightArm:{shoulder:[15,0,-25],elbow:[-30,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[15,20,-50],elbow:[-30,0,0],wrist:[0,0,0]}}
+],
+// MI: Mano plana toca el pecho
+"mi":[
+  {duration:.6, rightArm:{shoulder:[25,0,-5],elbow:[-125,0,0],wrist:[0,0,0]}}
+],
+// ── FAMILIA ──
+// FAMILIA: Ambas manos en F, unidas, movimiento circular
+"familia":[
+  {duration:.5, rightArm:{shoulder:[35,0,-30],elbow:[-80,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[35,0,30],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[35,0,-50],elbow:[-80,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[35,0,50],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[35,0,-30],elbow:[-80,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[35,0,30],elbow:[-80,0,0],wrist:[0,0,0]}}
+],
+// MAMA: Mano cerca de la mejilla/mentón con movimiento suave
+"mama":[
+  {duration:.5, rightArm:{shoulder:[35,0,-10],elbow:[-130,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[35,0,-10],elbow:[-130,0,0],wrist:[15,0,0]}},
+  {duration:.4, rightArm:{shoulder:[35,0,-10],elbow:[-130,0,0],wrist:[-5,0,0]}}
+],
+// PAPA: Mano cerca de la sien/frente
+"papa":[
+  {duration:.5, rightArm:{shoulder:[30,0,-15],elbow:[-130,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[30,10,-15],elbow:[-130,0,0],wrist:[10,0,0]}}
+],
+// HERMANO: Índices de ambas manos se unen
+"hermano":[
+  {duration:.5, rightArm:{shoulder:[30,0,-30],elbow:[-90,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,30],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[30,0,-15],elbow:[-90,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,15],elbow:[-90,0,0],wrist:[0,0,0]}}
+],
+// HERMANA: Similar a hermano con leve variación
+"hermana":[
+  {duration:.5, rightArm:{shoulder:[30,0,-30],elbow:[-90,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,30],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[30,0,-15],elbow:[-90,0,0],wrist:[0,10,0]}, leftArm:{shoulder:[30,0,15],elbow:[-90,0,0],wrist:[0,-10,0]}}
+],
+// HIJO: Mano baja frente al cuerpo (indicando menor altura)
+"hijo":[
+  {duration:.5, rightArm:{shoulder:[15,0,-15],elbow:[-50,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[10,0,-15],elbow:[-30,0,0],wrist:[0,0,0]}}
+],
+// HIJA: Similar con leve variación
+"hija":[
+  {duration:.5, rightArm:{shoulder:[15,0,-15],elbow:[-50,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[10,10,-15],elbow:[-30,0,0],wrist:[0,10,0]}}
+],
+// AMIGO: Ambas manos enganchan índices frente al cuerpo
+"amigo":[
+  {duration:.5, rightArm:{shoulder:[30,0,-25],elbow:[-90,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,25],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[30,0,-15],elbow:[-80,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,15],elbow:[-80,0,0],wrist:[0,0,0]}}
+],
+// AMOR: Brazos se cruzan sobre el pecho (autoabrazo)
+"amor":[
+  {duration:.5, rightArm:{shoulder:[30,0,-40],elbow:[-70,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,40],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.6, rightArm:{shoulder:[40,30,10],elbow:[-120,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[40,-30,-10],elbow:[-120,0,0],wrist:[0,0,0]}}
+],
+// ── LUGARES ──
+// CASA: Ambas manos forman un techo (triángulo) sobre la cabeza
+"casa":[
+  {duration:.5, rightArm:{shoulder:[60,0,-30],elbow:[-90,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[60,0,30],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[60,0,-15],elbow:[-90,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[60,0,15],elbow:[-90,0,0],wrist:[0,0,0]}}
+],
+// ESCUELA: Mano abierta frente, gesto de enseñar
+"escuela":[
+  {duration:.5, rightArm:{shoulder:[40,0,-30],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[50,0,-40],elbow:[-50,0,0],wrist:[20,0,0]}}
+],
+// TRABAJO: Ambas manos puño, golpean una sobre otra (martillar)
+"trabajo":[
+  {duration:.4, rightArm:{shoulder:[30,0,-20],elbow:[-90,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[20,0,10],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[30,0,-20],elbow:[-90,0,0],wrist:[20,0,0]}, leftArm:{shoulder:[20,0,10],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[30,0,-20],elbow:[-90,0,0],wrist:[-10,0,0]}, leftArm:{shoulder:[20,0,10],elbow:[-80,0,0],wrist:[0,0,0]}}
+],
+// HOSPITAL, DOCTOR, MEDICINA
+"hospital":[
+  {duration:.5, rightArm:{shoulder:[25,0,-20],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[35,0,-30],elbow:[-60,0,0],wrist:[0,20,0]}}
+],
+"doctor":[
+  {duration:.5, rightArm:{shoulder:[25,0,-10],elbow:[-100,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[15,0,10],elbow:[-60,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[25,0,-10],elbow:[-100,0,0],wrist:[20,0,0]}}
+],
+"medicina":[
+  {duration:.5, rightArm:{shoulder:[20,0,-10],elbow:[-90,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[20,0,10],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[20,0,-10],elbow:[-90,0,0],wrist:[20,0,0]}}
+],
+"ciudad":[
+  {duration:.5, rightArm:{shoulder:[40,0,-40],elbow:[-60,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[40,0,40],elbow:[-60,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[40,0,-40],elbow:[-60,0,0],wrist:[20,0,0]}, leftArm:{shoulder:[40,0,40],elbow:[-60,0,0],wrist:[-20,0,0]}}
+],
+"pais":[
+  {duration:.5, rightArm:{shoulder:[30,0,-30],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[50,0,-50],elbow:[-30,0,0],wrist:[0,0,0]}}
+],
+// ── PERSONAS ──
+"profesor":[
+  {duration:.5, rightArm:{shoulder:[40,0,-20],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[50,0,-30],elbow:[-50,0,0],wrist:[0,20,0]}}
+],
+"estudiante":[
+  {duration:.5, rightArm:{shoulder:[45,0,-10],elbow:[-120,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[30,0,-30],elbow:[-70,0,0],wrist:[0,0,0]}}
+],
+// ── ACCIONES ──
+// COMER: Mano (dedos juntos) se lleva a la boca repetidamente
+"comer":[
+  {duration:.3, rightArm:{shoulder:[40,0,-5],elbow:[-140,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[35,0,-5],elbow:[-120,0,0],wrist:[10,0,0]}},
+  {duration:.3, rightArm:{shoulder:[40,0,-5],elbow:[-140,0,0],wrist:[0,0,0]}}
+],
+// BEBER: Mano simula vaso, se lleva a la boca
+"beber":[
+  {duration:.5, rightArm:{shoulder:[40,0,-5],elbow:[-130,0,0],wrist:[30,0,0]}},
+  {duration:.5, rightArm:{shoulder:[50,0,-5],elbow:[-120,0,0],wrist:[-10,0,0]}}
+],
+// AGUA: Mano en W cerca de la boca, toca labio/barbilla
+"agua":[
+  {duration:.4, rightArm:{shoulder:[40,0,-5],elbow:[-135,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[40,0,-5],elbow:[-135,0,0],wrist:[15,0,0]}},
+  {duration:.3, rightArm:{shoulder:[40,0,-5],elbow:[-135,0,0],wrist:[-10,0,0]}}
+],
+// DORMIR: Manos juntas inclinadas al lado de la cara (simulando almohada)
+"dormir":[
+  {duration:.5, rightArm:{shoulder:[50,0,-10],elbow:[-130,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[50,0,10],elbow:[-130,0,0],wrist:[0,0,0]}},
+  {duration:.7, rightArm:{shoulder:[55,15,-10],elbow:[-130,0,0],wrist:[20,0,0]}, leftArm:{shoulder:[55,-15,10],elbow:[-130,0,0],wrist:[20,0,0]}}
+],
+// DESPERTAR: Ojos cerrados → manos abren desde la cara
+"despertar":[
+  {duration:.5, rightArm:{shoulder:[55,15,-10],elbow:[-130,0,0],wrist:[20,0,0]}, leftArm:{shoulder:[55,-15,10],elbow:[-130,0,0],wrist:[20,0,0]}},
+  {duration:.5, rightArm:{shoulder:[30,0,-30],elbow:[-60,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,30],elbow:[-60,0,0],wrist:[0,0,0]}}
+],
+// HABLAR: Mano cerca de la boca, dedos se abren/cierran
+"hablar":[
+  {duration:.3, rightArm:{shoulder:[35,0,-5],elbow:[-130,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[35,0,-5],elbow:[-130,0,0],wrist:[20,0,0]}},
+  {duration:.3, rightArm:{shoulder:[35,0,-5],elbow:[-130,0,0],wrist:[-5,0,0]}}
+],
+// PENSAR: Índice toca la sien
+"pensar":[
+  {duration:.5, rightArm:{shoulder:[30,0,-10],elbow:[-140,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[25,0,-10],elbow:[-130,0,0],wrist:[0,0,0]}}
+],
+// SABER: Similar a pensar, mano se aleja de la sien hacia afuera
+"saber":[
+  {duration:.5, rightArm:{shoulder:[30,0,-10],elbow:[-140,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[40,0,-20],elbow:[-80,0,0],wrist:[0,0,0]}}
+],
+// APRENDER: Mano toma de la frente y baja
+"aprender":[
+  {duration:.5, rightArm:{shoulder:[35,0,-10],elbow:[-140,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[25,0,-10],elbow:[-90,0,0],wrist:[0,0,0]}}
+],
+// ENTENDER: Chasquido en la sien
+"entender":[
+  {duration:.4, rightArm:{shoulder:[30,0,-10],elbow:[-140,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[35,0,-15],elbow:[-120,0,0],wrist:[20,0,0]}}
+],
+// VER: Dedos en V apuntan desde los ojos hacia afuera
+"ver":[
+  {duration:.5, rightArm:{shoulder:[30,0,-10],elbow:[-140,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[20,0,-20],elbow:[-60,0,0],wrist:[0,0,0]}}
+],
+// OIR: Mano cerca de la oreja
+"oir":[
+  {duration:.5, rightArm:{shoulder:[35,0,-10],elbow:[-140,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[40,10,-10],elbow:[-130,0,0],wrist:[0,0,0]}}
+],
+// SORDO: Señala oreja y cierra
+"sordo":[
+  {duration:.5, rightArm:{shoulder:[35,0,-10],elbow:[-140,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[35,0,-10],elbow:[-130,0,0],wrist:[0,0,0]}}
+],
+// OYENTE: Señala oreja y abre
+"oyente":[
+  {duration:.5, rightArm:{shoulder:[35,0,-10],elbow:[-140,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[40,0,-20],elbow:[-100,0,0],wrist:[0,0,0]}}
+],
+// IR: Mano apunta hacia adelante y se mueve
+"ir":[
+  {duration:.5, rightArm:{shoulder:[20,0,-20],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[30,0,-30],elbow:[-40,0,0],wrist:[0,0,0]}}
+],
+// VENIR: Mano de lejos se acerca al cuerpo
+"venir":[
+  {duration:.5, rightArm:{shoulder:[30,0,-30],elbow:[-40,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[20,0,-10],elbow:[-90,0,0],wrist:[0,0,0]}}
+],
+// HACER: Ambas manos frente al cuerpo, movimiento alterno
+"hacer":[
+  {duration:.4, rightArm:{shoulder:[25,0,-20],elbow:[-80,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[25,0,20],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[25,0,-20],elbow:[-70,0,0],wrist:[15,0,0]}, leftArm:{shoulder:[25,0,20],elbow:[-70,0,0],wrist:[-15,0,0]}}
+],
+// QUERER: Manos al pecho, acercar
+"querer":[
+  {duration:.5, rightArm:{shoulder:[30,0,-20],elbow:[-90,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,20],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[35,0,-10],elbow:[-110,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[35,0,10],elbow:[-110,0,0],wrist:[0,0,0]}}
+],
+// GUSTAR: Mano en el pecho, movimiento hacia afuera
+"gustar":[
+  {duration:.5, rightArm:{shoulder:[25,0,-5],elbow:[-120,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[30,0,-15],elbow:[-80,0,0],wrist:[15,0,0]}}
+],
+// NECESITAR: Mano cierra puño bajando
+"necesitar":[
+  {duration:.5, rightArm:{shoulder:[25,0,-15],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[25,0,-15],elbow:[-90,0,0],wrist:[25,0,0]}},
+  {duration:.4, rightArm:{shoulder:[20,0,-15],elbow:[-70,0,0],wrist:[0,0,0]}}
+],
+// TENER: Mano baja al pecho firme
+"tener":[
+  {duration:.5, rightArm:{shoulder:[30,0,-20],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[25,0,-10],elbow:[-110,0,0],wrist:[0,0,0]}}
+],
+// JUGAR: Ambas manos sacuden
+"jugar":[
+  {duration:.3, rightArm:{shoulder:[30,0,-30],elbow:[-70,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,30],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[35,0,-35],elbow:[-60,0,0],wrist:[20,0,0]}, leftArm:{shoulder:[35,0,35],elbow:[-60,0,0],wrist:[-20,0,0]}},
+  {duration:.3, rightArm:{shoulder:[30,0,-30],elbow:[-70,0,0],wrist:[-15,0,0]}, leftArm:{shoulder:[30,0,30],elbow:[-70,0,0],wrist:[15,0,0]}}
+],
+// COMPRAR/PAGAR/DINERO
+"comprar":[
+  {duration:.5, rightArm:{shoulder:[25,0,-20],elbow:[-80,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[20,0,10],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[25,0,-20],elbow:[-60,0,0],wrist:[20,0,0]}}
+],
+"pagar":[
+  {duration:.5, rightArm:{shoulder:[25,0,-15],elbow:[-80,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[20,0,10],elbow:[-60,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[25,0,-15],elbow:[-60,0,0],wrist:[20,0,0]}}
+],
+"dinero":[
+  {duration:.4, rightArm:{shoulder:[25,0,-15],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[25,0,-15],elbow:[-80,0,0],wrist:[0,20,0]}},
+  {duration:.3, rightArm:{shoulder:[25,0,-15],elbow:[-80,0,0],wrist:[0,-20,0]}}
+],
+"caro":[
+  {duration:.5, rightArm:{shoulder:[25,0,-25],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[45,0,-40],elbow:[-30,0,0],wrist:[0,0,0]}}
+],
+"barato":[
+  {duration:.5, rightArm:{shoulder:[25,0,-25],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[15,0,-20],elbow:[-80,0,0],wrist:[0,0,0]}}
+],
+// ── COMIDA ──
+"comida":[
+  {duration:.3, rightArm:{shoulder:[40,0,-5],elbow:[-140,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[35,0,-5],elbow:[-120,0,0],wrist:[10,0,0]}}
+],
+"bano":[
+  {duration:.5, rightArm:{shoulder:[20,0,-15],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[20,0,-15],elbow:[-60,0,0],wrist:[15,0,0]}}
+],
+// ── EMOCIONES ──
+// FELIZ: Manos suben desde el pecho con palmas abiertas
+"feliz":[
+  {duration:.5, rightArm:{shoulder:[25,0,-15],elbow:[-100,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[25,0,15],elbow:[-100,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[50,0,-40],elbow:[-40,0,0],wrist:[15,0,0]}, leftArm:{shoulder:[50,0,40],elbow:[-40,0,0],wrist:[-15,0,0]}}
+],
+// TRISTE: Mano baja desde la cara con expresión triste
+"triste":[
+  {duration:.5, rightArm:{shoulder:[35,0,-10],elbow:[-120,0,0],wrist:[0,0,0]}},
+  {duration:.6, rightArm:{shoulder:[15,0,-10],elbow:[-50,0,0],wrist:[-20,0,0]}}
+],
+// ENOJADO: Puños se tensan frente al cuerpo
+"enojado":[
+  {duration:.5, rightArm:{shoulder:[30,0,-20],elbow:[-90,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,20],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[45,0,-20],elbow:[-100,0,0],wrist:[25,0,0]}, leftArm:{shoulder:[45,0,20],elbow:[-100,0,0],wrist:[-25,0,0]}}
+],
+// CANSADO: Manos en hombros, bajan con pesadez
+"cansado":[
+  {duration:.5, rightArm:{shoulder:[30,0,-15],elbow:[-80,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[30,0,15],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.6, rightArm:{shoulder:[15,0,-10],elbow:[-40,0,0],wrist:[-15,0,0]}, leftArm:{shoulder:[15,0,10],elbow:[-40,0,0],wrist:[15,0,0]}}
+],
+// ENFERMO: Manos a los lados del estómago/cabeza
+"enfermo":[
+  {duration:.5, rightArm:{shoulder:[35,0,-10],elbow:[-130,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[25,0,10],elbow:[-100,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[30,0,-10],elbow:[-120,0,0],wrist:[-15,0,0]}, leftArm:{shoulder:[20,0,10],elbow:[-80,0,0],wrist:[15,0,0]}}
+],
+// ── TIEMPO ──
+// HOY: Ambas manos bajan frente al cuerpo
+"hoy":[
+  {duration:.5, rightArm:{shoulder:[25,0,-25],elbow:[-70,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[25,0,25],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[25,0,-25],elbow:[-50,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[25,0,25],elbow:[-50,0,0],wrist:[0,0,0]}}
+],
+// MAÑANA: Mano en el pecho sube hacia adelante
+"manana":[
+  {duration:.5, rightArm:{shoulder:[25,0,-20],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[40,0,-25],elbow:[-50,0,0],wrist:[15,0,0]}}
+],
+// AYER: Mano va hacia atrás sobre el hombro
+"ayer":[
+  {duration:.5, rightArm:{shoulder:[25,0,-20],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[10,20,-10],elbow:[-50,0,0],wrist:[-15,0,0]}}
+],
+"ahora":[
+  {duration:.5, rightArm:{shoulder:[25,0,-25],elbow:[-70,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[25,0,25],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[25,0,-25],elbow:[-55,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[25,0,25],elbow:[-55,0,0],wrist:[0,0,0]}}
+],
+"despues":[
+  {duration:.5, rightArm:{shoulder:[25,0,-20],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[35,0,-30],elbow:[-50,0,0],wrist:[0,0,0]}}
+],
+"siempre":[
+  {duration:.4, rightArm:{shoulder:[30,0,-25],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[30,0,-25],elbow:[-70,0,0],wrist:[0,15,0]}},
+  {duration:.3, rightArm:{shoulder:[30,0,-25],elbow:[-70,0,0],wrist:[0,-15,0]}}
+],
+"nunca":[
+  {duration:.4, rightArm:{shoulder:[25,0,-40],elbow:[-60,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[25,10,-55],elbow:[-60,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[25,-10,-55],elbow:[-60,0,0],wrist:[0,0,0]}}
+],
+"tiempo":[
+  {duration:.5, rightArm:{shoulder:[25,0,-15],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[25,0,-15],elbow:[-80,0,0],wrist:[0,15,0]}}
+],
+// ── CANTIDADES ──
+"mucho":[
+  {duration:.5, rightArm:{shoulder:[25,0,-30],elbow:[-60,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[25,0,30],elbow:[-60,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[40,0,-50],elbow:[-30,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[40,0,50],elbow:[-30,0,0],wrist:[0,0,0]}}
+],
+"poco":[
+  {duration:.5, rightArm:{shoulder:[20,0,-15],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[20,0,-15],elbow:[-80,0,0],wrist:[10,0,0]}}
+],
+"grande":[
+  {duration:.5, rightArm:{shoulder:[25,0,-50],elbow:[-30,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[25,0,50],elbow:[-30,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[25,0,-70],elbow:[-20,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[25,0,70],elbow:[-20,0,0],wrist:[0,0,0]}}
+],
+"pequeno":[
+  {duration:.5, rightArm:{shoulder:[20,0,-15],elbow:[-80,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[20,0,15],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[20,0,-12],elbow:[-80,0,0],wrist:[0,0,0]}, leftArm:{shoulder:[20,0,12],elbow:[-80,0,0],wrist:[0,0,0]}}
+],
+// ── COLORES ──
+"color":[
+  {duration:.4, rightArm:{shoulder:[30,0,-10],elbow:[-120,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[30,0,-10],elbow:[-120,0,0],wrist:[0,15,0]}},
+  {duration:.3, rightArm:{shoulder:[30,0,-10],elbow:[-120,0,0],wrist:[0,-15,0]}}
+],
+"rojo":[
+  {duration:.5, rightArm:{shoulder:[30,0,-5],elbow:[-130,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[30,0,-5],elbow:[-115,0,0],wrist:[15,0,0]}}
+],
+"azul":[
+  {duration:.5, rightArm:{shoulder:[20,0,-15],elbow:[-90,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[20,0,-15],elbow:[-75,0,0],wrist:[0,15,0]}}
+],
+"amarillo":[
+  {duration:.4, rightArm:{shoulder:[25,0,-15],elbow:[-80,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[25,0,-15],elbow:[-80,0,0],wrist:[15,0,0]}},
+  {duration:.3, rightArm:{shoulder:[25,0,-15],elbow:[-80,0,0],wrist:[-15,0,0]}}
+],
+"verde":[
+  {duration:.5, rightArm:{shoulder:[20,0,-20],elbow:[-75,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[25,0,-20],elbow:[-55,0,0],wrist:[15,0,0]}}
+],
+"blanco":[
+  {duration:.5, rightArm:{shoulder:[25,0,-10],elbow:[-110,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[30,0,-15],elbow:[-70,0,0],wrist:[0,0,0]}}
+],
+"negro":[
+  {duration:.5, rightArm:{shoulder:[25,0,-10],elbow:[-110,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[25,10,-10],elbow:[-95,0,0],wrist:[0,0,0]}}
+],
+// ── DIAS ──
+"lunes":[{duration:.5,rightArm:{shoulder:[25,0,-25],elbow:[-80,0,0],wrist:[0,0,0]}},{duration:.4,rightArm:{shoulder:[35,0,-25],elbow:[-60,0,0],wrist:[15,0,0]}}],
+"martes":[{duration:.5,rightArm:{shoulder:[25,0,-25],elbow:[-80,0,0],wrist:[0,0,0]}},{duration:.4,rightArm:{shoulder:[35,0,-25],elbow:[-60,0,0],wrist:[0,15,0]}}],
+"miercoles":[{duration:.4,rightArm:{shoulder:[25,0,-25],elbow:[-80,0,0],wrist:[0,0,0]}},{duration:.3,rightArm:{shoulder:[35,0,-30],elbow:[-60,0,0],wrist:[15,0,0]}},{duration:.3,rightArm:{shoulder:[25,0,-25],elbow:[-80,0,0],wrist:[-10,0,0]}}],
+"jueves":[{duration:.5,rightArm:{shoulder:[25,0,-25],elbow:[-80,0,0],wrist:[0,0,0]}},{duration:.4,rightArm:{shoulder:[35,0,-25],elbow:[-55,0,0],wrist:[0,0,0]}}],
+"viernes":[{duration:.5,rightArm:{shoulder:[25,0,-25],elbow:[-80,0,0],wrist:[0,0,0]}},{duration:.4,rightArm:{shoulder:[25,0,-25],elbow:[-65,0,0],wrist:[15,0,0]}}],
+"sabado":[{duration:.5,rightArm:{shoulder:[25,0,-25],elbow:[-80,0,0],wrist:[0,0,0]}},{duration:.5,rightArm:{shoulder:[35,0,-35],elbow:[-55,0,0],wrist:[0,15,0]}}],
+"domingo":[{duration:.5,rightArm:{shoulder:[25,0,-25],elbow:[-80,0,0],wrist:[0,0,0]}},{duration:.5,rightArm:{shoulder:[45,0,-20],elbow:[-45,0,0],wrist:[0,0,0]}}],
+// ── SALUDOS COMPUESTOS ──
+"buenos dias":[
+  {duration:.4, rightArm:{shoulder:[20,0,-70],elbow:[-100,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[20,0,-70],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[50,0,-30],elbow:[-50,0,0],wrist:[15,0,0]}}
+],
+"buenas tardes":[
+  {duration:.4, rightArm:{shoulder:[20,0,-70],elbow:[-100,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[20,0,-70],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.4, rightArm:{shoulder:[30,0,-30],elbow:[-70,0,0],wrist:[15,0,0]}}
+],
+"buenas noches":[
+  {duration:.4, rightArm:{shoulder:[20,0,-70],elbow:[-100,0,0],wrist:[0,0,0]}},
+  {duration:.3, rightArm:{shoulder:[20,0,-70],elbow:[-70,0,0],wrist:[0,0,0]}},
+  {duration:.5, rightArm:{shoulder:[55,15,-10],elbow:[-130,0,0],wrist:[20,0,0]}}
+],
+// ── PREGUNTAS ──
+"que":[{duration:.4,rightArm:{shoulder:[25,0,-35],elbow:[-80,0,0],wrist:[0,0,0]}},{duration:.4,rightArm:{shoulder:[40,0,-35],elbow:[-50,0,0],wrist:[0,0,0]}}],
+"quien":[{duration:.5,rightArm:{shoulder:[25,0,-30],elbow:[-90,0,0],wrist:[15,0,0]}},{duration:.4,rightArm:{shoulder:[25,0,-30],elbow:[-90,0,0],wrist:[-15,0,0]}}],
+"cuando":[{duration:.5,rightArm:{shoulder:[30,0,-25],elbow:[-75,0,0],wrist:[0,0,0]}},{duration:.4,rightArm:{shoulder:[30,10,-25],elbow:[-75,0,0],wrist:[15,0,0]}}],
+"donde":[{duration:.4,rightArm:{shoulder:[25,0,-35],elbow:[-65,0,0],wrist:[0,0,0]}},{duration:.4,rightArm:{shoulder:[25,0,-35],elbow:[-65,0,0],wrist:[0,15,0]}},{duration:.3,rightArm:{shoulder:[25,0,-35],elbow:[-65,0,0],wrist:[0,-15,0]}}],
+"por que":[{duration:.5,rightArm:{shoulder:[30,0,-30],elbow:[-80,0,0],wrist:[0,0,0]}},{duration:.5,rightArm:{shoulder:[40,0,-30],elbow:[-50,0,0],wrist:[20,0,0]}}],
+"cuanto":[{duration:.5,rightArm:{shoulder:[30,0,-30],elbow:[-70,0,0],wrist:[0,0,0]},leftArm:{shoulder:[30,0,30],elbow:[-70,0,0],wrist:[0,0,0]}},{duration:.5,rightArm:{shoulder:[40,0,-40],elbow:[-45,0,0],wrist:[0,0,0]},leftArm:{shoulder:[40,0,40],elbow:[-45,0,0],wrist:[0,0,0]}}],
+// ── EXTRAS ──
+"nombre":[{duration:.5,rightArm:{shoulder:[25,0,-20],elbow:[-90,0,0],wrist:[0,0,0]}},{duration:.5,rightArm:{shoulder:[25,0,-20],elbow:[-90,0,0],wrist:[0,15,0]}}],
+"ayuda":[{duration:.5,rightArm:{shoulder:[25,0,-25],elbow:[-70,0,0],wrist:[0,0,0]},leftArm:{shoulder:[25,0,25],elbow:[-70,0,0],wrist:[0,0,0]}},{duration:.5,rightArm:{shoulder:[45,0,-35],elbow:[-35,0,0],wrist:[0,0,0]},leftArm:{shoulder:[45,0,35],elbow:[-35,0,0],wrist:[0,0,0]}}],
+"perro":[{duration:.4,rightArm:{shoulder:[20,0,-15],elbow:[-80,0,0],wrist:[0,0,0]}},{duration:.3,rightArm:{shoulder:[20,0,-15],elbow:[-80,0,0],wrist:[15,0,0]}},{duration:.3,rightArm:{shoulder:[20,0,-15],elbow:[-80,0,0],wrist:[-10,0,0]}}],
+"gato":[{duration:.5,rightArm:{shoulder:[30,0,-10],elbow:[-120,0,0],wrist:[0,0,0]}},{duration:.4,rightArm:{shoulder:[30,0,-10],elbow:[-110,0,0],wrist:[0,15,0]}}],
+"libro":[{duration:.5,rightArm:{shoulder:[20,0,-20],elbow:[-70,0,0],wrist:[0,0,0]},leftArm:{shoulder:[20,0,20],elbow:[-70,0,0],wrist:[0,0,0]}},{duration:.5,rightArm:{shoulder:[25,0,-25],elbow:[-55,0,0],wrist:[25,0,0]},leftArm:{shoulder:[25,0,25],elbow:[-55,0,0],wrist:[-25,0,0]}}],
+"telefono":[{duration:.5,rightArm:{shoulder:[30,0,-10],elbow:[-135,0,0],wrist:[0,0,0]}},{duration:.4,rightArm:{shoulder:[30,0,-10],elbow:[-135,0,0],wrist:[15,0,0]}}],
+"carro":[{duration:.4,rightArm:{shoulder:[25,0,-25],elbow:[-80,0,0],wrist:[0,0,0]},leftArm:{shoulder:[25,0,25],elbow:[-80,0,0],wrist:[0,0,0]}},{duration:.3,rightArm:{shoulder:[25,0,-25],elbow:[-80,0,0],wrist:[15,0,0]},leftArm:{shoulder:[25,0,25],elbow:[-80,0,0],wrist:[-15,0,0]}},{duration:.3,rightArm:{shoulder:[25,0,-25],elbow:[-80,0,0],wrist:[-15,0,0]},leftArm:{shoulder:[25,0,25],elbow:[-80,0,0],wrist:[15,0,0]}}],
+"mundo":[{duration:.5,rightArm:{shoulder:[30,0,-30],elbow:[-60,0,0],wrist:[0,0,0]},leftArm:{shoulder:[30,0,30],elbow:[-60,0,0],wrist:[0,0,0]}},{duration:.5,rightArm:{shoulder:[30,0,-30],elbow:[-60,0,0],wrist:[15,0,0]},leftArm:{shoulder:[30,0,30],elbow:[-60,0,0],wrist:[-15,0,0]}}],
+"adios":[{duration:.4,rightArm:{shoulder:[20,0,-60],elbow:[-90,0,0],wrist:[0,0,0]}},{duration:.3,rightArm:{shoulder:[20,0,-60],elbow:[-70,0,0],wrist:[15,0,0]}},{duration:.3,rightArm:{shoulder:[20,0,-60],elbow:[-90,0,0],wrist:[-10,0,0]}}]
+};
+
+        // ═══════════════════════════════════════════════════════════
+        //  THREE.JS SCENE + PROFESSIONAL AVATAR
+        // ═══════════════════════════════════════════════════════════
+        let scene, camera, renderer;
+        let rightShoulder, rightElbow, rightWrist;
+        let leftShoulder, leftElbow, leftWrist;
+        let head;
+        let avatarSkinMat, avatarShirtMat;
+        let isAnimating = false;
+
+        init();
+        animate();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = null;
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 1.2, 3.5);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            var ambient = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambient);
+
+            var keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            keyLight.position.set(2, 5, 3);
+            keyLight.castShadow = true;
+            keyLight.shadow.camera.top = 2;
+            keyLight.shadow.camera.bottom = -2;
+            keyLight.shadow.camera.left = -2;
+            keyLight.shadow.camera.right = 2;
+            keyLight.shadow.mapSize.width = 1024;
+            keyLight.shadow.mapSize.height = 1024;
+            scene.add(keyLight);
+
+            var fillLight = new THREE.DirectionalLight(0xaaccff, 0.4);
+            fillLight.position.set(-2, 3, -3);
+            scene.add(fillLight);
+
+            var rimLight = new THREE.DirectionalLight(0xffddaa, 0.3);
+            rimLight.position.set(0, 2, -4);
+            scene.add(rimLight);
+
+            buildAvatar();
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function buildAvatar() {
+            avatarSkinMat = new THREE.MeshStandardMaterial({ color: 0xe0ac69, roughness: 0.4, metalness: 0.1 });
+            avatarShirtMat = new THREE.MeshStandardMaterial({ color: 0x2266cc, roughness: 0.6 });
+            var darkMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+            var jointMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.3 });
+
+            var group = new THREE.Group();
+
+            // Torso
+            var torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.65, 32), avatarShirtMat);
+            torso.position.y = 0.5; torso.castShadow = true; torso.receiveShadow = true;
+            group.add(torso);
+            var topCap = new THREE.Mesh(new THREE.SphereGeometry(0.22, 32, 16, 0, Math.PI*2, 0, Math.PI/2), avatarShirtMat);
+            topCap.position.y = 0.825; topCap.castShadow = true; group.add(topCap);
+            var botCap = new THREE.Mesh(new THREE.SphereGeometry(0.18, 32, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2), avatarShirtMat);
+            botCap.position.y = 0.175; group.add(botCap);
+
+            // Head
+            head = new THREE.Group();
+            head.position.y = 1.05;
+            var neck = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.08, 16), avatarSkinMat);
+            neck.position.y = -0.08; head.add(neck);
+            var headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 32, 32), avatarSkinMat);
+            headMesh.castShadow = true; head.add(headMesh);
+            var hair = new THREE.Mesh(new THREE.SphereGeometry(0.185, 32, 16, 0, Math.PI*2, 0, Math.PI/2.5),
+                new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.9 }));
+            hair.position.y = 0.02; head.add(hair);
+            [-1,1].forEach(function(sign) {
+                var ew = new THREE.Mesh(new THREE.SphereGeometry(0.03,16,16), new THREE.MeshStandardMaterial({color:0xffffff}));
+                ew.position.set(sign*0.065,0.03,0.155); head.add(ew);
+                var ir = new THREE.Mesh(new THREE.SphereGeometry(0.015,16,16), new THREE.MeshStandardMaterial({color:0x3d2b1f}));
+                ir.position.set(sign*0.065,0.03,0.17); head.add(ir);
+            });
+            var mouth = new THREE.Mesh(new THREE.BoxGeometry(0.06,0.012,0.015), new THREE.MeshStandardMaterial({color:0xcc6655}));
+            mouth.position.set(0,-0.05,0.165); head.add(mouth);
+            var nose = new THREE.Mesh(new THREE.SphereGeometry(0.02,16,16), avatarSkinMat);
+            nose.position.set(0,0,0.175); head.add(nose);
+            group.add(head);
+
+            // Arms
+            function createArm(isLeft) {
+                var sign = isLeft ? 1 : -1;
+                var shoulder = new THREE.Group();
+                shoulder.position.set(sign * 0.35, 0.85, 0);
+                var sj = new THREE.Mesh(new THREE.SphereGeometry(0.08,16,16), avatarShirtMat);
+                sj.castShadow = true; shoulder.add(sj);
+                var ua = new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.06,0.26,16), avatarShirtMat);
+                ua.position.y = -0.16; ua.castShadow = true; shoulder.add(ua);
+
+                var elbow = new THREE.Group();
+                elbow.position.y = -0.32; shoulder.add(elbow);
+                var ej = new THREE.Mesh(new THREE.SphereGeometry(0.055,16,16), jointMat);
+                ej.castShadow = true; elbow.add(ej);
+                var la = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.05,0.26,16), avatarSkinMat);
+                la.position.y = -0.16; la.castShadow = true; elbow.add(la);
+
+                var wrist = new THREE.Group();
+                wrist.position.y = -0.32; elbow.add(wrist);
+                var hand = new THREE.Mesh(new THREE.BoxGeometry(0.09,0.12,0.04), avatarSkinMat);
+                hand.position.y = -0.06; hand.castShadow = true; wrist.add(hand);
+                var fingers = new THREE.Mesh(new THREE.BoxGeometry(0.08,0.08,0.03), avatarSkinMat);
+                fingers.position.y = -0.16; fingers.castShadow = true; wrist.add(fingers);
+                var thumb = new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,0.06,8), avatarSkinMat);
+                thumb.position.set(sign*0.05,-0.08,0.02); thumb.rotation.z = sign*0.5; wrist.add(thumb);
+
+                return { shoulder: shoulder, elbow: elbow, wrist: wrist };
+            }
+
+            var rArm = createArm(false);
+            rightShoulder = rArm.shoulder; rightElbow = rArm.elbow; rightWrist = rArm.wrist;
+            group.add(rightShoulder);
+
+            var lArm = createArm(true);
+            leftShoulder = lArm.shoulder; leftElbow = lArm.elbow; leftWrist = lArm.wrist;
+            group.add(leftShoulder);
+
+            scene.add(group);
+            resetPose();
+        }
+
+        function resetPose() {
+            rightShoulder.rotation.set(0, 0, 0.2);
+            rightElbow.rotation.set(-0.1, 0, 0);
+            rightWrist.rotation.set(0, 0, 0);
+            leftShoulder.rotation.set(0, 0, -0.2);
+            leftElbow.rotation.set(-0.1, 0, 0);
+            leftWrist.rotation.set(0, 0, 0);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            TWEEN.update();
+            if (!isAnimating && head) {
+                var t = Date.now() * 0.002;
+                head.rotation.y = Math.sin(t * 0.5) * 0.04;
+                head.rotation.x = Math.sin(t * 0.3) * 0.015;
+                rightShoulder.rotation.z = 0.2 + Math.sin(t) * 0.015;
+                leftShoulder.rotation.z = -0.2 - Math.sin(t) * 0.015;
+            }
+            renderer.render(scene, camera);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  ANIMATION ENGINE
+        // ═══════════════════════════════════════════════════════════
+        var deg2rad = Math.PI / 180;
+
+        function playFrames(frames, onComplete) {
+            isAnimating = true;
+            var current = 0;
+
+            function nextFrame() {
+                if (current >= frames.length) {
+                    new TWEEN.Tween(rightShoulder.rotation).to({x:0,y:0,z:0.2},400).easing(TWEEN.Easing.Quadratic.Out).start();
+                    new TWEEN.Tween(rightElbow.rotation).to({x:-0.1,y:0,z:0},400).easing(TWEEN.Easing.Quadratic.Out).start();
+                    new TWEEN.Tween(rightWrist.rotation).to({x:0,y:0,z:0},400).easing(TWEEN.Easing.Quadratic.Out).start();
+                    new TWEEN.Tween(leftShoulder.rotation).to({x:0,y:0,z:-0.2},400).easing(TWEEN.Easing.Quadratic.Out).start();
+                    new TWEEN.Tween(leftElbow.rotation).to({x:-0.1,y:0,z:0},400).easing(TWEEN.Easing.Quadratic.Out).start();
+                    new TWEEN.Tween(leftWrist.rotation).to({x:0,y:0,z:0},400).easing(TWEEN.Easing.Quadratic.Out).onComplete(function(){
+                        isAnimating = false;
+                        if(onComplete) onComplete();
+                    }).start();
+                    return;
+                }
+                var f = frames[current];
+                var dur = f.duration * 1000;
+                if(f.rightArm) {
+                    new TWEEN.Tween(rightShoulder.rotation).to({x:f.rightArm.shoulder[0]*deg2rad,y:f.rightArm.shoulder[1]*deg2rad,z:f.rightArm.shoulder[2]*deg2rad},dur).easing(TWEEN.Easing.Quadratic.Out).start();
+                    new TWEEN.Tween(rightElbow.rotation).to({x:f.rightArm.elbow[0]*deg2rad,y:f.rightArm.elbow[1]*deg2rad,z:f.rightArm.elbow[2]*deg2rad},dur).easing(TWEEN.Easing.Quadratic.Out).start();
+                    new TWEEN.Tween(rightWrist.rotation).to({x:f.rightArm.wrist[0]*deg2rad,y:f.rightArm.wrist[1]*deg2rad,z:f.rightArm.wrist[2]*deg2rad},dur).easing(TWEEN.Easing.Quadratic.Out).start();
+                }
+                if(f.leftArm) {
+                    new TWEEN.Tween(leftShoulder.rotation).to({x:f.leftArm.shoulder[0]*deg2rad,y:f.leftArm.shoulder[1]*deg2rad,z:f.leftArm.shoulder[2]*deg2rad},dur).easing(TWEEN.Easing.Quadratic.Out).start();
+                    new TWEEN.Tween(leftElbow.rotation).to({x:f.leftArm.elbow[0]*deg2rad,y:f.leftArm.elbow[1]*deg2rad,z:f.leftArm.elbow[2]*deg2rad},dur).easing(TWEEN.Easing.Quadratic.Out).start();
+                    new TWEEN.Tween(leftWrist.rotation).to({x:f.leftArm.wrist[0]*deg2rad,y:f.leftArm.wrist[1]*deg2rad,z:f.leftArm.wrist[2]*deg2rad},dur).easing(TWEEN.Easing.Quadratic.Out).start();
+                }
+                current++;
+                setTimeout(nextFrame, dur);
+            }
+            nextFrame();
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  TEXT NORMALIZATION (removes accents so "cómo estás" → "como estas")
+        // ═══════════════════════════════════════════════════════════
+        function normalize(str) {
+            // Remove accents/diacritics
+            var map = {'á':'a','é':'e','í':'i','ó':'o','ú':'u','ñ':'n','ü':'u'};
+            var result = str.toLowerCase();
+            for (var k in map) {
+                result = result.split(k).join(map[k]);
+            }
+            return result.replace(/[.,¿?!¡;:()]/g, '').trim();
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  FLUTTER API
+        // ═══════════════════════════════════════════════════════════
+        window.signSentence = function(text) {
+            var clean = normalize(text);
+            if (!clean) return;
+
+            // Check full phrase first (e.g. "como estas")
+            if (DICT[clean]) {
+                playFrames(DICT[clean]);
+                return;
+            }
+
+            var words = clean.split(/\s+/).filter(function(w) { return w.length > 0; });
+            var idx = 0;
+
+            function nextWord() {
+                if (idx >= words.length) return;
+
+                // Try 3-word match
+                if (idx + 2 < words.length) {
+                    var three = words[idx] + ' ' + words[idx+1] + ' ' + words[idx+2];
+                    if (DICT[three]) { idx += 3; playFrames(DICT[three], nextWord); return; }
+                }
+                // Try 2-word match (e.g. "como estas", "buenos dias")
+                if (idx + 1 < words.length) {
+                    var two = words[idx] + ' ' + words[idx+1];
+                    if (DICT[two]) { idx += 2; playFrames(DICT[two], nextWord); return; }
+                }
+                // Single word match
+                var w = words[idx];
+                idx++;
+                if (DICT[w]) {
+                    playFrames(DICT[w], nextWord);
+                } else {
+                    // Skip unknown words, continue
+                    nextWord();
+                }
+            }
+            nextWord();
+        };
+
+        window.signWord = function(word) {
+            var w = normalize(word);
+            if (DICT[w]) playFrames(DICT[w]);
+        };
+
+        window.spellWord = function(word, onComplete) {
+            var frames = [];
+            for (var i = 0; i < Math.min(word.length, 8); i++) {
+                frames.push({ duration: 0.3, rightArm: { shoulder: [0,0,-45], elbow: [-90,0,0], wrist: [0,0,(i%2===0?20:-20)] } });
+            }
+            playFrames(frames, onComplete);
+        };
+
+        window.setAvatarSkin = function(colorHex) { if(avatarSkinMat) avatarSkinMat.color.setHex(colorHex); };
+        window.setAvatarShirt = function(colorHex) { if(avatarShirtMat) avatarShirtMat.color.setHex(colorHex); };
+    </script>
+</body>
+</html>

@@ -8,3 +8,5 @@ channels-redis==4.1.0
 redis==5.0.1
 # Para producción con MySQL (opcional, descomentar si se usa):
 # mysqlclient==2.2.0
+dj-database-url==2.1.0
+psycopg2-binary==2.9.9

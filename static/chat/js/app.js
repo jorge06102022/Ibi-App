@@ -149,6 +149,7 @@ function handleWS(data) {
       if (data.message_type === 'text') {
         speak(data.content);
       }
+      playAvatarSigns(data.content);
       break;
     case 'typing':
       showTyping(data.sender_name, data.is_typing);
@@ -245,6 +246,27 @@ function appendMessage(data) {
 
   wrap.appendChild(div);
   scrollBottom();
+}
+
+let avatarResetTimer = null;
+function playAvatarSigns(text) {
+  if (!text) return;
+  const frame = document.getElementById('avatarFrame');
+  if (frame && frame.contentWindow && typeof frame.contentWindow.signSentence === 'function') {
+    frame.contentWindow.signSentence(text);
+    
+    const panel = document.getElementById('avatarPanelInner');
+    const textEl = document.getElementById('avatarStatusText');
+    if (panel) panel.classList.add('active');
+    if (textEl) textEl.textContent = 'Señando: ' + text;
+    
+    clearTimeout(avatarResetTimer);
+    const wordCount = text.trim().split(/\s+/).length;
+    avatarResetTimer = setTimeout(() => {
+      if (panel) panel.classList.remove('active');
+      if (textEl) textEl.textContent = 'Avatar de señas LSC';
+    }, wordCount * 1500 + 1000);
+  }
 }
 
 // Alterna un solo mensaje entre texto plano y modo señas (emoji),
@@ -776,3 +798,145 @@ function escHtml(str) {
   d.appendChild(document.createTextNode(String(str)));
   return d.innerHTML;
 }
+
+// ── Quick Words Dial ──
+const quickWords = [
+  { text: 'Hola', icon: '👋' },
+  { text: 'Gracias', icon: '🙏' },
+  { text: 'Por favor', icon: '✨' },
+  { text: 'Sí', icon: '👍' },
+  { text: 'No', icon: '👎' },
+  { text: 'Ayuda', icon: '🆘' },
+  { text: 'Bien', icon: '😊' },
+  { text: 'Mal', icon: '😞' },
+  { text: 'Más o menos', icon: '😐' },
+  { text: 'Entiendo', icon: '💡' },
+  { text: 'No entiendo', icon: '❓' },
+  { text: 'De nada', icon: '🙌' },
+  { text: 'Perdón', icon: '😔' },
+  { text: 'Adiós', icon: '👋' }
+];
+
+let currentAngle = 0;
+let isDraggingDial = false;
+let startX = 0;
+let lastX = 0;
+
+function initDial() {
+  const dialRing = document.getElementById('dialRing');
+  if (!dialRing) return;
+  const numItems = quickWords.length;
+  const angleStep = 15;
+  
+  quickWords.forEach((qw, i) => {
+    const angle = i * angleStep;
+    const item = document.createElement('div');
+    item.className = 'quick-word-item';
+    item.style.transform = `rotate(${angle}deg)`;
+    
+    const inner = document.createElement('div');
+    inner.style.transform = `rotate(${-angle}deg)`;
+    inner.style.display = 'flex';
+    inner.style.flexDirection = 'column';
+    inner.style.alignItems = 'center';
+    
+    inner.innerHTML = `
+      <div class="quick-word-icon">${qw.icon}</div>
+      <div class="quick-word-text">${qw.text}</div>
+    `;
+    item.appendChild(inner);
+    item.dataset.index = i;
+    item.dataset.angle = angle;
+    
+    item.addEventListener('click', () => {
+      if (!isDraggingDial) {
+        const input = document.getElementById('msgInput');
+        input.value += (input.value ? ' ' : '') + qw.text;
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 110) + 'px';
+        updateCharCount(input.value.length);
+        sendTyping(input.value.length > 0);
+      }
+    });
+    
+    dialRing.appendChild(item);
+  });
+  
+  updateDialUI();
+}
+
+function updateDialUI() {
+  const dialRing = document.getElementById('dialRing');
+  if (!dialRing) return;
+  dialRing.style.transform = `rotate(${currentAngle}deg)`;
+  
+  const items = dialRing.querySelectorAll('.quick-word-item');
+  items.forEach((item) => {
+    const itemAngle = parseFloat(item.dataset.angle);
+    const absoluteAngle = (itemAngle + currentAngle) % 360;
+    
+    const inner = item.firstElementChild;
+    inner.style.transform = `rotate(${-(itemAngle + currentAngle)}deg)`;
+    
+    let diff = Math.abs(absoluteAngle);
+    if (diff > 180) diff = 360 - diff;
+    if (diff < 8) {
+      item.classList.add('center-active');
+    } else {
+      item.classList.remove('center-active');
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  initDial();
+  const dialContainer = document.getElementById('dialContainer');
+  const dialRing = document.getElementById('dialRing');
+  if(dialContainer && dialRing) {
+    dialContainer.addEventListener('mousedown', e => {
+      isDraggingDial = true;
+      startX = e.clientX;
+      lastX = e.clientX;
+      dialRing.style.transition = 'none';
+    });
+    window.addEventListener('mousemove', e => {
+      if(!isDraggingDial) return;
+      const dx = e.clientX - lastX;
+      lastX = e.clientX;
+      currentAngle += dx * 0.4;
+      updateDialUI();
+    });
+    window.addEventListener('mouseup', e => {
+      if(isDraggingDial) {
+        isDraggingDial = false;
+        dialRing.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        const angleStep = 15;
+        currentAngle = Math.round(currentAngle / angleStep) * angleStep;
+        updateDialUI();
+      }
+    });
+    
+    dialContainer.addEventListener('touchstart', e => {
+      isDraggingDial = true;
+      startX = e.touches[0].clientX;
+      lastX = e.touches[0].clientX;
+      dialRing.style.transition = 'none';
+    });
+    window.addEventListener('touchmove', e => {
+      if(!isDraggingDial) return;
+      const dx = e.touches[0].clientX - lastX;
+      lastX = e.touches[0].clientX;
+      currentAngle += dx * 0.4;
+      updateDialUI();
+    });
+    window.addEventListener('touchend', e => {
+      if(isDraggingDial) {
+        isDraggingDial = false;
+        dialRing.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        const angleStep = 15;
+        currentAngle = Math.round(currentAngle / angleStep) * angleStep;
+        updateDialUI();
+      }
+    });
+  }
+});

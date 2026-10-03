@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-/// Mano 3D articulada (Three.js dentro de un WebView) que forma cada
-/// seña del abecedario y se anima letra por letra. Es una aproximación
-/// geométrica de apoyo, no una traducción oficial ni certificada a LSC.
-class HandAvatar3D extends StatefulWidget {
-  const HandAvatar3D({super.key});
+/// Avatar 3D de medio cuerpo (Three.js dentro de un WebView) que realiza
+/// señas LSC por palabra y deletrea como fallback.
+/// Es una aproximación visual educativa.
+class SignAvatar3D extends StatefulWidget {
+  const SignAvatar3D({super.key});
 
   @override
-  State<HandAvatar3D> createState() => HandAvatar3DState();
+  State<SignAvatar3D> createState() => SignAvatar3DState();
 }
 
-class HandAvatar3DState extends State<HandAvatar3D> {
+class SignAvatar3DState extends State<SignAvatar3D> {
   late final WebViewController _controller;
   bool _ready = false;
 
@@ -26,12 +26,31 @@ class HandAvatar3DState extends State<HandAvatar3D> {
           if (mounted) setState(() => _ready = true);
         }),
       )
-      ..loadFlutterAsset('assets/html/hand3d.html');
+      ..loadFlutterAsset('assets/html/avatar3d.html');
+  }
+
+  void signSentence(String text) {
+    final escaped = text.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+    _controller.runJavaScript("try { signSentence('$escaped'); } catch(e) {}");
+  }
+
+  void signWord(String text) {
+    final escaped = text.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+    _controller.runJavaScript("try { signWord('$escaped'); } catch(e) {}");
   }
 
   void spell(String text) {
     final escaped = text.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
     _controller.runJavaScript("try { spellWord('$escaped'); } catch(e) {}");
+  }
+
+  void setAvatarAppearance({int? skinColor, int? shirtColor}) {
+    if (skinColor != null) {
+      _controller.runJavaScript("try { setAvatarSkin($skinColor); } catch(e) {}");
+    }
+    if (shirtColor != null) {
+      _controller.runJavaScript("try { setAvatarShirt($shirtColor); } catch(e) {}");
+    }
   }
 
   @override

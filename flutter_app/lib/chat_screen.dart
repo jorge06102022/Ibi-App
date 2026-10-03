@@ -56,8 +56,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _signKeyboardOpen = false;
   final _textFocusNode = FocusNode();
 
-  // ── Avatar de deletreo visual (letra por letra) ────────────
-  final GlobalKey<HandAvatar3DState> _handAvatarKey = GlobalKey<HandAvatar3DState>();
+  // ── Avatar de señas 3D ────────────
+  final GlobalKey<SignAvatar3DState> _handAvatarKey = GlobalKey<SignAvatar3DState>();
   List<String> _avatarSigns = [];
   int _avatarIndex = 0;
   Timer? _avatarTimer;
@@ -169,16 +169,13 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // ── Avatar de deletreo visual ──────────────────────────────
-  // Deletrea con emoji-señas lo que la otra persona dijo/escribió,
-  // letra por letra. NO es una traducción oficial a LSC (no existe
-  // seña por palabra completa aquí, solo el alfabeto visual de apoyo).
+  // ── Avatar de señas visuales ──────────────────────────────
   void _playAvatarSigns(String text) {
     final clean = text.trim();
     if (clean.isEmpty) return;
 
-    // Pedir a la mano 3D que deletree el texto
-    _handAvatarKey.currentState?.spell(clean);
+    // Pedir al avatar 3D que haga la seña de la oración
+    _handAvatarKey.currentState?.signSentence(clean);
 
     final raw = textToSignEmojis(clean);
     final parts = raw.split(' ').where((s) => s.trim().isNotEmpty).toList();
@@ -699,7 +696,7 @@ class _AvatarPanel extends StatelessWidget {
   final bool active;
   final String emoji;
   final String word;
-  final GlobalKey<HandAvatar3DState> handKey;
+  final GlobalKey<SignAvatar3DState> handKey;
 
   const _AvatarPanel({
     super.key,
@@ -737,12 +734,12 @@ class _AvatarPanel extends StatelessWidget {
               color: AppColors.bg2,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: HandAvatar3D(key: handKey),
+            child: SignAvatar3D(key: handKey),
           ),
           const SizedBox(height: 8),
           // ── Texto de estado ──
           Text(
-            active ? 'Deletreando: $word' : 'Avatar de señas',
+            active ? 'Señando: $word' : 'Avatar de señas LSC',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -753,7 +750,7 @@ class _AvatarPanel extends StatelessWidget {
           ),
           if (!active)
             const Text(
-              'Deletreo visual — no es LSC oficial',
+              'Avatar interactivo - Aproximación visual educativa',
               style: TextStyle(color: AppColors.tx3, fontSize: 11),
             ),
         ],

@@ -269,6 +269,19 @@
         </button>
       </div>
 
+      <!-- Avatar Panel -->
+      <div class="avatar-panel" id="avatarPanel">
+        <div class="avatar-panel-inner" id="avatarPanelInner">
+          <div class="avatar-frame">
+            <iframe src="{% url 'chat:avatar3d' %}" id="avatarFrame" frameborder="0" scrolling="no"></iframe>
+          </div>
+          <div class="avatar-status">
+            <div id="avatarStatusText" class="avatar-status-text">Avatar de señas LSC</div>
+            <div id="avatarSubText" class="avatar-sub-text">Avatar interactivo - Aproximación visual educativa</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Messages -->
       <div class="messages-area" id="msgArea">
         <div class="messages-wrap" id="msgWrap">
@@ -310,6 +323,15 @@
     </div><!-- .chat-wrap -->
 
     <!-- ── Input area ────────────────────────────────────── -->
+    <div class="quick-words-panel">
+      <div class="quick-words-title">Palabras Rápidas</div>
+      <div class="dial-container" id="dialContainer">
+        <div class="dial-ring" id="dialRing">
+          <!-- Words will be injected here via JS -->
+        </div>
+      </div>
+    </div>
+
     <div class="input-area">
       <div class="input-row">
         <button class="btn-mic" id="micBtn" onclick="toggleMic()" title="Micrófono (Ctrl+M)">
@@ -378,5 +400,5 @@
 
 {% block extra_js %}
 {% load static %}
-<script src="{% static 'chat/js/app.js' %}"></script>
+<script src="{% static 'chat/js/app.js' %}?v=2"></script>
 {% endblock %}

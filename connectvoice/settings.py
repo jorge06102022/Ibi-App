@@ -9,6 +9,11 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'connectvoice-secret-key-change-in-pro
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
+CSRF_TRUSTED_ORIGINS = [
+    url.strip() for url in os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://*.railway.app,https://*.up.railway.app').split(',')
+    if url.strip()
+]
+
 INSTALLED_APPS = [
     'daphne',  # <-- DEBE SER LA PRIMERA LÍNEA AQUÍ
     'django.contrib.admin',
@@ -54,26 +59,16 @@ TEMPLATES = [
 WSGI_APPLICATION = 'connectvoice.wsgi.application'
 ASGI_APPLICATION = 'connectvoice.asgi.application'
 
-# SQLite por defecto — fácil de usar sin configuración
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'connectvoice.db',
-    }
-}
+import dj_database_url
 
-# MySQL (descomentar para producción)
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': os.environ.get('DB_NAME', 'connectvoice_db'),
-#         'USER': os.environ.get('DB_USER', 'root'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-#         'HOST': os.environ.get('DB_HOST', 'localhost'),
-#         'PORT': os.environ.get('DB_PORT', '3306'),
-#         'OPTIONS': {'charset': 'utf8mb4'},
-#     }
-# }
+# Configuración de base de datos dinámica
+# Railway provee DATABASE_URL automáticamente si conectas Postgres
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR}/connectvoice.db',
+        conn_max_age=600
+    )
+}
 
 # Channels
 # Si existe la variable de entorno REDIS_URL (ej. corriendo con Docker),

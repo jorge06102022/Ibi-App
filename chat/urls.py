@@ -14,4 +14,5 @@ urlpatterns = [
     path('api/rooms/<slug:room_slug>/messages/', views.get_messages_api, name='messages_api'),
     path('api/sender/', views.set_sender, name='set_sender'),
     path('descargar/<slug:room_slug>/', views.download_history, name='download'),
+    path('avatar3d/', views.avatar3d, name='avatar3d'),
 ]

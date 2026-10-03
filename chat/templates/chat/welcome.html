@@ -64,7 +64,9 @@
     <img src="{% static 'chat/img/welcome-hero.jpg' %}" alt="IBI — Comunicación Sin Barreras">
 
     <a href="{% url 'chat:index' %}" class="welcome-cta">
-      <div class="welcome-cta-circle">⛵</div>
+      <div class="welcome-cta-circle">
+        <img src="{% static 'chat/img/logo.png' %}" alt="Logo Ibi" style="width: 60%; height: auto; mix-blend-mode: multiply;">
+      </div>
       <div class="welcome-cta-text">
         <b>EMPEZAR CONVERSACIÓN</b>
         <span>Toque para conectar</span>
